@@ -7,10 +7,10 @@ struct SheetFrame<Content: View>: View {
     var body: some View {
         ScrollView {
             VStack(alignment: .leading, spacing: 16) {
-                Text(title).font(.system(size: 19, weight: .bold))
+                Text(title).font(.system(size: 20, weight: .bold))
                 content
             }
-            .padding(20)
+            .padding(.horizontal, 20).padding(.top, 26).padding(.bottom, 20)
             .frame(maxWidth: .infinity, alignment: .leading)
         }
         .foregroundStyle(Theme.fg)
@@ -67,9 +67,8 @@ struct ScheduleEditor: View {
                 } label: {
                     Text(Fmt.dayLetters[i]).font(.system(size: 14))
                         .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .foregroundStyle(on ? Theme.accent : Theme.fg)
-                        .background(on ? Theme.accent.opacity(0.14) : Theme.surface2, in: RoundedRectangle(cornerRadius: 12))
-                        .overlay(RoundedRectangle(cornerRadius: 12).stroke(on ? Theme.accent : Theme.line))
+                        .foregroundStyle(on ? Theme.accentInk : Theme.fg)
+                        .glass(14, selected: on)
                 }
                 .buttonStyle(.plain)
             }
@@ -85,8 +84,7 @@ struct ScheduleEditor: View {
                 .environment(\.locale, Locale(identifier: "he_IL"))
                 .frame(maxWidth: .infinity)
                 .padding(8)
-                .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.line))
+                .glass(14)
         }
     }
 

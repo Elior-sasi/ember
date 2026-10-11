@@ -80,7 +80,30 @@ final class AppModel: ObservableObject {
     }
 
     func addTime(_ m: Int) {
-        act("נוספו \(m) דקות") { try await HeaterController.addTime(minutes: m) }
+        act(m > 0 ? "נוספו \(m) דקות" : "הורדו \(-m) דקות") { try await HeaterController.addTime(minutes: m) }
+    }
+
+    /// −/+ on the dial: changes the chosen minutes when off, or the running timer when on.
+    func nudge(_ delta: Int) {
+        if isOn {
+            guard !unlimited else { return }
+            if delta < 0 && secondsLeft <= 6 * 60 { return }
+            addTime(delta)
+        } else {
+            let base = chosen == 0 ? 45 : chosen
+            chosen = min(DialView.maxM, max(DialView.minM, base + delta))
+            Haptics.tap()
+        }
+    }
+
+    /// Preset tiles: pick the minutes when off, start a new timer when on.
+    func preset(_ m: Int) {
+        if isOn && !unlimited {
+            act("הדוד דולק ל-\(m) דקות") { try await HeaterController.turnOn(minutes: m) }
+        } else if !isOn {
+            chosen = m
+            Haptics.tap()
+        }
     }
 
     func setAutoShutdown(_ minutes: Int) {

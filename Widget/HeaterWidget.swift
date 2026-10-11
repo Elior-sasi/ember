@@ -62,7 +62,13 @@ struct HeaterWidgetView: View {
             }
         }
         .environment(\.layoutDirection, .rightToLeft)
-        .containerBackground(for: .widget) { Theme.surface2 }
+        .containerBackground(for: .widget) {
+            ZStack {
+                Theme.bg
+                RadialGradient(colors: [Theme.accentSoft, .clear], center: .init(x: 0.5, y: 0.3), startRadius: 0, endRadius: 160)
+                    .opacity(entry.isOn ? 1 : 0.4)
+            }
+        }
     }
 
     // MARK: home screen
@@ -72,12 +78,12 @@ struct HeaterWidgetView: View {
             HStack {
                 Text(entry.name).font(.system(size: 14, weight: .semibold))
                 Spacer()
-                Image(systemName: "flame.fill").foregroundStyle(entry.isOn ? Theme.accent : Theme.muted).font(.system(size: 13))
+                Image(systemName: "flame.fill").foregroundStyle(entry.isOn ? Theme.accentInk : Theme.muted).font(.system(size: 13))
             }
             Text(entry.isOn ? (entry.unlimited ? "דולק ללא טיימר" : "נשאר") : "כבוי")
                 .font(.system(size: 12)).foregroundStyle(Theme.muted)
             Spacer(minLength: 2)
-            bigNumber.font(Theme.num(30, .light)).foregroundStyle(entry.isOn ? Theme.accent : Theme.fg)
+            bigNumber.font(Theme.num(30, .light)).foregroundStyle(entry.isOn ? Theme.accentInk : Theme.fg)
             Spacer(minLength: 4)
             toggleButton
         }
@@ -94,8 +100,7 @@ struct HeaterWidgetView: View {
                         Text("+15 דק׳").font(.system(size: 14, weight: .semibold)).frame(maxWidth: .infinity).padding(.vertical, 8)
                     }
                     .buttonStyle(.plain)
-                    .background(Theme.surface, in: RoundedRectangle(cornerRadius: 12))
-                    .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.line))
+                    .glass(14)
                 } else {
                     Text("תזמון הבא").font(.system(size: 13)).foregroundStyle(Theme.muted)
                     if let n = entry.next {
@@ -131,7 +136,7 @@ struct HeaterWidgetView: View {
                     .font(.system(size: 13, weight: .bold))
                     .frame(maxWidth: .infinity).padding(.vertical, 8)
                     .foregroundStyle(entry.isOn ? Theme.fg : Theme.onAccent)
-                    .background(entry.isOn ? AnyShapeStyle(Theme.surface) : AnyShapeStyle(Theme.heat), in: RoundedRectangle(cornerRadius: 12))
+                    .background(entry.isOn ? AnyShapeStyle(Theme.glass2) : AnyShapeStyle(Theme.heat), in: Capsule())
             }
             .buttonStyle(.plain)
         } else {
@@ -178,7 +183,7 @@ struct HeaterWidget: Widget {
         StaticConfiguration(kind: "HeaterWidget", provider: HeaterProvider()) { entry in
             HeaterWidgetView(entry: entry)
         }
-        .configurationDisplayName("דוד")
+        .configurationDisplayName("Ember")
         .description("מצב הדוד, והדלקה או כיבוי בלחיצה.")
         .supportedFamilies([.systemSmall, .systemMedium, .accessoryCircular, .accessoryRectangular])
     }

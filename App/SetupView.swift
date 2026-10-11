@@ -36,8 +36,7 @@ struct SetupView: View {
                         .environment(\.layoutDirection, .leftToRight)
                 }
                 .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                .background(Theme.surface, in: RoundedRectangle(cornerRadius: 16))
-                .overlay(RoundedRectangle(cornerRadius: 16).stroke(Theme.accent))
+                .glass(20, selected: true)
                 Button("זה הדוד שלי") { use(h) }.buttonStyle(PrimaryStyle())
 
             case .manual, .connecting:
@@ -131,8 +130,7 @@ struct Field: View {
                 .multilineTextAlignment(ltr ? .leading : .trailing)
                 .environment(\.layoutDirection, ltr ? .leftToRight : .rightToLeft)
                 .padding(12)
-                .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
-                .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.line))
+                .glass(14)
         }
     }
 }
@@ -146,7 +144,6 @@ struct Hint: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .background(Theme.bg, in: RoundedRectangle(cornerRadius: 12))
-        .overlay(RoundedRectangle(cornerRadius: 12).stroke(Theme.line))
+        .glass(16)
     }
 }

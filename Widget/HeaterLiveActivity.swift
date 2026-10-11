@@ -7,6 +7,7 @@ struct HeaterLiveActivity: Widget {
     var body: some WidgetConfiguration {
         ActivityConfiguration(for: HeaterActivityAttributes.self) { ctx in
             LockScreenActivity(name: ctx.attributes.name, state: ctx.state)
+                .environment(\.colorScheme, .dark)
                 .activityBackgroundTint(Color(hex: 0x1c1712).opacity(0.94))
                 .activitySystemActionForegroundColor(Theme.accent)
         } dynamicIsland: { ctx in

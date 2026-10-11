@@ -1,4 +1,4 @@
-name: Dud
+name: Ember
 options:
   bundleIdPrefix: com.elior
   deploymentTarget:
@@ -41,13 +41,12 @@ targets:
     info:
       path: Resources/Info.plist
       properties:
-        CFBundleDisplayName: דוד
+        CFBundleDisplayName: Ember
         CFBundleDevelopmentRegion: he
         CFBundleLocalizations: [he]
         UILaunchScreen:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
-        UIUserInterfaceStyle: Dark
         NSLocalNetworkUsageDescription: האפליקציה מדברת עם הדוד ישירות ברשת ה-WiFi של הבית.
         NSSupportsLiveActivities: true
         LSApplicationQueriesSchemes: [switcher, switchersmart]
@@ -55,7 +54,7 @@ targets:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.elior.dud
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        INFOPLIST_KEY_CFBundleDisplayName: דוד
+        INFOPLIST_KEY_CFBundleDisplayName: Ember
 
   DudWidget:
     type: app-extension
@@ -75,7 +74,7 @@ targets:
     info:
       path: Resources/Widget-Info.plist
       properties:
-        CFBundleDisplayName: דוד
+        CFBundleDisplayName: Ember
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
         NSSupportsLiveActivities: true

@@ -47,13 +47,13 @@ enum HeaterController {
         return try await refreshAfterCommand(c)
     }
 
-    /// Restarts the timer with the time that was left plus `minutes`.
+    /// Restarts the timer with the time that was left plus `minutes` (which may be negative).
     @discardableResult
     static func addTime(minutes: Int) async throws -> Snapshot {
         let c = try client()
         let now = try await run { try await c.state() }
         guard now.isOn, !store.unlimitedRun else { return publish(now) }
-        let total = Int((Double(now.secondsLeft) / 60).rounded(.up)) + minutes
+        let total = max(1, Int((Double(now.secondsLeft) / 60).rounded(.up)) + minutes)
         try await run { try await c.turnOn(minutes: total) }
         return try await refreshAfterCommand(c)
     }
