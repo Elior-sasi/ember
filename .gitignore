@@ -1,0 +1,8 @@
+Dud.xcodeproj/
+build/
+Payload/
+*.ipa
+.build/
+.swiftpm/
+DerivedData/
+.DS_Store
