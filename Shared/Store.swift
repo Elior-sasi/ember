@@ -71,6 +71,11 @@ final class Store {
         get { load("parked") ?? [] }
         set { save(newValue, "parked") }
     }
+    /// "The water is hot" notification on or off (on by default).
+    var notifyWhenDone: Bool {
+        get { defaults.object(forKey: "notify") as? Bool ?? true }
+        set { defaults.set(newValue, forKey: "notify") }
+    }
     /// Last schedule list read from the heater, for the widget.
     var cachedSchedules: [HeaterSchedule] {
         get { load("schedules") ?? [] }

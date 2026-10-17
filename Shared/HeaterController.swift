@@ -156,7 +156,7 @@ enum Notifier {
     static func sync(_ snap: Snapshot, unlimited: Bool, name: String) {
         let center = UNUserNotificationCenter.current()
         center.removePendingNotificationRequests(withIdentifiers: [id])
-        guard let end = snap.endsAt, end.timeIntervalSinceNow > 5 else { return }
+        guard Store.shared.notifyWhenDone, let end = snap.endsAt, end.timeIntervalSinceNow > 5 else { return }
         let content = UNMutableNotificationContent()
         let minutes = Int(((snap.startedAt.map { end.timeIntervalSince($0) } ?? 0) / 60).rounded())
         if unlimited {

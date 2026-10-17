@@ -216,6 +216,51 @@ final class AppModel: ObservableObject {
         show("התזמון נמחק")
     }
 
+    /// Saves the schedule editor. An inactive schedule lives only in the app (see ParkedSchedule).
+    func saveScheduleEdit(_ source: ScheduleSheet.Source, days: Set<Int>, start: Int, end: Int, active: Bool) {
+        let mask = WeekdayBits.mask(days)
+        Task {
+            do {
+                switch source {
+                case .heater(let s):
+                    try await HeaterController.deleteSchedule(slot: s.slot)
+                    if active { try await HeaterController.addSchedule(weekdays: mask, start: start, end: end) }
+                    else { Store.shared.parked.append(ParkedSchedule(weekdays: mask, startMinutes: start, endMinutes: end)) }
+                case .parked(let p):
+                    if active {
+                        try await HeaterController.addSchedule(weekdays: mask, start: start, end: end)
+                        Store.shared.parked.removeAll { $0.id == p.id }
+                    } else {
+                        Store.shared.parked = Store.shared.parked.map {
+                            $0.id == p.id ? ParkedSchedule(id: p.id, weekdays: mask, startMinutes: start, endMinutes: end) : $0
+                        }
+                    }
+                case .new:
+                    if active { try await HeaterController.addSchedule(weekdays: mask, start: start, end: end) }
+                    else { Store.shared.parked.append(ParkedSchedule(weekdays: mask, startMinutes: start, endMinutes: end)) }
+                }
+                await loadSchedules()
+                show(active ? "התזמון נשמר בדוד" : "התזמון נשמר כמושבת")
+            } catch { handle(error, quiet: false) }
+        }
+    }
+
+    func deleteScheduleEdit(_ source: ScheduleSheet.Source) {
+        switch source {
+        case .heater(let s): deleteSchedule(s)
+        case .parked(let p): deleteParked(p)
+        case .new: break
+        }
+    }
+
+    @Published var notify: Bool = Store.shared.notifyWhenDone {
+        didSet {
+            Store.shared.notifyWhenDone = notify
+            if notify { Notifier.requestPermission() }
+            if let s = snapshot { Notifier.sync(s, unlimited: unlimited, name: config.name) }
+        }
+    }
+
     var nextSchedule: HeaterSchedule? { Store.nextRun(schedules, now: now)?.schedule }
 
     // MARK: settings

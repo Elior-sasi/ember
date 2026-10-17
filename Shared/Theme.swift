@@ -12,6 +12,11 @@ enum Theme {
     static let glass2 = Color(lightRGBA: (255, 255, 255, 0.85), darkRGBA: (255, 255, 255, 0.11))
     static let glassEdge = Color(lightRGBA: (0, 0, 0, 0.07), darkRGBA: (255, 255, 255, 0.16))
     static let glassHi = Color(lightRGBA: (255, 255, 255, 1), darkRGBA: (255, 255, 255, 0.22))
+    static let fill = Color(light: 0xffffff, dark: 0x1c1c1e)
+    static let fill2 = Color(light: 0xe9e9ee, dark: 0x2c2c2e)
+    /// accent mixed 22% into the fills, for selected controls
+    static let accentFill = Color(light: 0xffe4cf, dark: 0x4a3222)
+    static let accentFill2 = Color(light: 0xf6dbc6, dark: 0x543a2a)
     static let track = Color(lightRGBA: (0, 0, 0, 0.08), darkRGBA: (255, 255, 255, 0.1))
 
     static let accent = Color(hex: 0xff9a4d)
@@ -55,32 +60,23 @@ extension UIColor {
     }
 }
 
-/// The glass surface used across the app: faint fill, hairline edge, bright top highlight.
-struct Glass: ViewModifier {
+/// Breeze 6.0 "calm": solid fills for controls, glass only on floating layers (bar, sheets, toast).
+struct Card: ViewModifier {
     var radius: CGFloat
     var selected = false
+    var inner = false       // inside a sheet or the details panel: one shade lighter
     func body(content: Content) -> some View {
-        content
-            .background {
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .fill(selected ? Theme.accent.opacity(0.22) : Theme.glass)
-            }
-            .overlay {
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .strokeBorder(selected ? Theme.accent.opacity(0.6) : Theme.glassEdge, lineWidth: 0.5)
-            }
-            .overlay(alignment: .top) {
-                // inset highlight along the top edge
-                RoundedRectangle(cornerRadius: radius, style: .continuous)
-                    .stroke(Theme.glassHi, lineWidth: 1)
-                    .mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .init(x: 0.5, y: 0.08)))
-                    .allowsHitTesting(false)
-            }
+        content.background {
+            RoundedRectangle(cornerRadius: radius, style: .continuous)
+                .fill(selected ? (inner ? Theme.accentFill2 : Theme.accentFill) : (inner ? Theme.fill2 : Theme.fill))
+        }
     }
 }
 
 extension View {
-    func glass(_ radius: CGFloat = 22, selected: Bool = false) -> some View { modifier(Glass(radius: radius, selected: selected)) }
+    func card(_ radius: CGFloat = 22, selected: Bool = false, inner: Bool = false) -> some View {
+        modifier(Card(radius: radius, selected: selected, inner: inner))
+    }
 }
 
 enum Fmt {

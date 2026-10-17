@@ -7,7 +7,7 @@ struct ContentView: View {
     @State private var sheet: SheetKind?
 
     enum SheetKind: Identifiable {
-        case menu, stats, settings, autoOff, schedules, schedule(HeaterSchedule?), parked(ParkedSchedule)
+        case menu, stats, settings, autoOff, schedules, fault, schedule(ScheduleSheet.Source)
         var id: String {
             switch self {
             case .menu: return "menu"
@@ -15,8 +15,13 @@ struct ContentView: View {
             case .settings: return "settings"
             case .autoOff: return "auto"
             case .schedules: return "schedules"
-            case .schedule(let s): return "s\(s?.slot ?? -1)"
-            case .parked(let p): return p.id.uuidString
+            case .fault: return "fault"
+            case .schedule(let src):
+                switch src {
+                case .new: return "new"
+                case .heater(let s): return "s\(s.slot)"
+                case .parked(let p): return p.id.uuidString
+                }
             }
         }
     }
@@ -27,10 +32,13 @@ struct ContentView: View {
             ScrollView {
                 VStack(spacing: 12) {
                     Header(sheet: $sheet)
+                    if model.connection == .noAnswer && model.snapshot != nil {
+                        FaultBar { sheet = .fault }
+                    }
                     switch model.connection {
                     case .notSetUp: SetupView()
                     case .away: AwayView()
-                    case .noAnswer: NoAnswerView(openSettings: { sheet = .settings })
+                    case .noAnswer where model.snapshot == nil: NoAnswerView(openSettings: { sheet = .settings })
                     default: MainPanel(sheet: $sheet)
                     }
                 }
@@ -67,13 +75,13 @@ struct ContentView: View {
                 case .settings: SettingsView()
                 case .autoOff: AutoOffSheet()
                 case .schedules: SchedulesSheet(sheet: $sheet)
-                case .schedule(let s): ScheduleSheet(existing: s)
-                case .parked(let p): ParkedSheet(item: p)
+                case .schedule(let src): ScheduleSheet(source: src)
+                case .fault: FaultSheet(sheet: $sheet)
                 }
             }
             .environmentObject(model)
             .environment(\.layoutDirection, .rightToLeft)
-            .presentationDetents(kind.id == "menu" ? [.height(390)] : [.medium, .large])
+            .presentationDetents(kind.id == "menu" ? [.height(520)] : kind.id == "fault" ? [.height(300)] : [.medium, .large])
             .presentationCornerRadius(36)
             .presentationBackground(.regularMaterial)
             .presentationDragIndicator(.visible)
@@ -84,7 +92,7 @@ struct ContentView: View {
         .onAppear { model.start() }
     }
 
-    var showBar: Bool { model.connection == .ok || (model.connection == .connecting && model.snapshot != nil) }
+    var showBar: Bool { model.connection == .ok || ((model.connection == .connecting || model.connection == .noAnswer) && model.snapshot != nil) }
 }
 
 /// Black (or light grey) page with a soft copper glow, like Breeze's tinted background.
@@ -107,47 +115,86 @@ struct Backdrop: View {
 struct Header: View {
     @EnvironmentObject var model: AppModel
     @Binding var sheet: ContentView.SheetKind?
+    @State private var pulse = false
 
     var body: some View {
-        HStack(spacing: 8) {
+        HStack(spacing: 4) {
             Text("Ember")
-                .font(.system(size: 28, weight: .bold))
+                .font(.system(size: 26, weight: .bold))
                 .kerning(-0.8)
                 .foregroundStyle(LinearGradient(colors: [Theme.fg, Theme.fg, Theme.accent], startPoint: .leading, endPoint: .trailing))
                 .environment(\.layoutDirection, .leftToRight)
             Spacer()
             Button { Task { await model.refresh() } } label: {
-                Circle().fill(dotColor).frame(width: 10, height: 10)
-                    .shadow(color: dotColor, radius: 4)
-                    .frame(width: 38, height: 38)
-                    .glass(19)
+                HStack(spacing: 7) {
+                    Circle().fill(dotColor).frame(width: 10, height: 10)
+                        .shadow(color: dotColor, radius: 4)
+                        .opacity(model.connection == .connecting ? (pulse ? 1 : 0.35) : 1)
+                        .animation(model.connection == .connecting ? .easeInOut(duration: 0.6).repeatForever(autoreverses: true) : .default, value: pulse)
+                    if !dotOnly { Text(statusText).font(.system(size: 13)) }
+                }
+                .padding(.horizontal, dotOnly ? 6 : 12)
+                .frame(height: 32)
+                .background(dotOnly ? Color.clear : Theme.fill, in: Capsule())
             }
             .buttonStyle(PressStyle())
             .accessibilityLabel(statusText)
+            .onAppear { pulse = true }
             Button { sheet = .menu } label: {
                 Image(systemName: "ellipsis").font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.muted)
-                    .frame(width: 38, height: 38)
-                    .glass(19)
+                    .frame(width: 36, height: 36)
+                    .background(Theme.fill, in: Circle())
             }
             .buttonStyle(PressStyle())
             .accessibilityLabel("תפריט")
         }
     }
 
+    var dotOnly: Bool { model.connection == .ok || model.connection == .connecting }
     var dotColor: Color {
         switch model.connection {
         case .ok: return Theme.ok
-        case .connecting, .away, .notSetUp: return Theme.warn
+        case .connecting: return Color(hex: 0xffcc00)
+        case .away, .notSetUp: return Theme.warn
         case .noAnswer: return Theme.bad
         }
     }
     var statusText: String {
         switch model.connection {
         case .ok: return "מחובר"
-        case .connecting: return "מתחבר"
+        case .connecting: return "מתחבר..."
         case .away: return "מחוץ לבית"
         case .noAnswer: return "הדוד לא עונה"
         case .notSetUp: return "לא מוגדר"
+        }
+    }
+}
+
+struct FaultBar: View {
+    var action: () -> Void
+    var body: some View {
+        Button(action: action) {
+            Label("הדוד לא עונה · לחץ לפרטים", systemImage: "exclamationmark.circle")
+                .font(.system(size: 14, weight: .semibold))
+                .foregroundStyle(Color(hex: 0xff7a7a))
+                .frame(maxWidth: .infinity).padding(.vertical, 9)
+                .background(Color(red: 1, green: 0.31, blue: 0.31).opacity(0.14), in: RoundedRectangle(cornerRadius: 14, style: .continuous))
+        }
+        .buttonStyle(PressStyle())
+    }
+}
+
+struct FaultSheet: View {
+    @EnvironmentObject var model: AppModel
+    @Binding var sheet: ContentView.SheetKind?
+    var body: some View {
+        SheetFrame(title: "הדוד לא עונה") {
+            Text("אתה מחובר ל-WiFi, אבל הדוד לא מגיב בכתובת \(model.config.host). ייתכן שהוא התנתק מה-WiFi או קיבל כתובת חדשה מהראוטר. מה שמוצג במסך הוא המצב האחרון שנקלט.")
+                .font(.system(size: 14)).foregroundStyle(Theme.muted).lineSpacing(3)
+            HStack(spacing: 8) {
+                Button("בדוק הגדרות") { MenuSheet.switchTo(.settings, $sheet) }.buttonStyle(SecondaryStyle())
+                Button("נסה שוב") { sheet = nil; Task { await model.refresh() } }.buttonStyle(PrimaryStyle())
+            }
         }
     }
 }
@@ -161,43 +208,86 @@ struct MainPanel: View {
 
     var body: some View {
         VStack(spacing: 12) {
-            DialView().padding(.bottom, -22)
-            HStack(spacing: 10) {
-                PowerButton()
-                SideButton()
-            }
-            .fixedSize(horizontal: false, vertical: true)
-            StatusChip()
+            DialView(onTimerTap: { sheet = .autoOff }).padding(.top, -6).padding(.bottom, -38)
+            ControlRow()
+            PowerButton()
             VStack(alignment: .leading, spacing: 6) {
                 Text("זמן מהיר").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted).padding(.horizontal, 4)
                 Presets()
             }
             Details(open: $detailsOpen, sheet: $sheet)
         }
-        .disabled(model.connection != .ok && model.snapshot == nil)
+        .disabled(model.snapshot == nil && model.connection != .ok)
     }
 }
 
+/// Under the arc: − and + at the ends, a pill in the middle ("no timer" when off, "+15" when on).
+struct ControlRow: View {
+    @EnvironmentObject var model: AppModel
+    var body: some View {
+        HStack(spacing: 8) {
+            step("+", 5)
+            Spacer(minLength: 0)
+            if model.isOn {
+                if !model.unlimited {
+                    pill(selected: false) { model.addTime(15) } label: {
+                        Image(systemName: "plus.circle").font(.system(size: 16))
+                        Text("+15").font(.system(size: 13, weight: .medium, design: .rounded)).environment(\.layoutDirection, .leftToRight)
+                        Text("דק׳").font(.system(size: 13))
+                    }
+                }
+            } else {
+                let on = model.chosen == 0
+                pill(selected: on) { model.chosen = on ? 45 : 0; Haptics.tap() } label: {
+                    Image(systemName: "infinity").font(.system(size: 15, weight: .semibold))
+                    Text("ללא טיימר").font(.system(size: 13))
+                }
+            }
+            Spacer(minLength: 0)
+            step("−", -5)
+        }
+        .disabled(model.busy || model.connection != .ok)
+    }
+
+    func step(_ label: String, _ delta: Int) -> some View {
+        let hidden = model.isOn ? model.unlimited : model.chosen == 0
+        return Button { model.nudge(delta) } label: {
+            Text(label).font(.system(size: 26, weight: .light)).foregroundStyle(Theme.fg)
+                .frame(width: 52, height: 52)
+                .background(Theme.fill, in: Circle())
+        }
+        .buttonStyle(PressStyle())
+        .opacity(hidden ? 0 : 1)
+        .disabled(hidden)
+        .accessibilityLabel(delta > 0 ? "עוד 5 דקות" : "פחות 5 דקות")
+    }
+
+    func pill<L: View>(selected: Bool, action: @escaping () -> Void, @ViewBuilder label: () -> L) -> some View {
+        Button(action: action) {
+            HStack(spacing: 6) { label() }
+                .foregroundStyle(selected ? Theme.accentInk : Theme.fg)
+                .padding(.leading, 10).padding(.trailing, 12).padding(.vertical, 8)
+                .background(selected ? Theme.accentFill : Theme.fill, in: Capsule())
+        }
+        .buttonStyle(PressStyle())
+    }
+}
+
+/// Full width. Off: solid fill. On: copper, like Breeze's accent power button.
 struct PowerButton: View {
     @EnvironmentObject var model: AppModel
     var body: some View {
         Button { model.powerTapped() } label: {
             HStack(spacing: 10) {
-                if model.busy { ProgressView().tint(model.isOn ? Theme.fg : Theme.onAccent) }
+                if model.busy { ProgressView().tint(model.isOn ? Theme.onAccent : Theme.fg) }
                 else { Image(systemName: "power").font(.system(size: 19, weight: .bold)) }
                 Text(title).font(.system(size: 17, weight: .semibold))
             }
-            .frame(maxWidth: .infinity).padding(15)
-            .foregroundStyle(model.isOn ? Theme.fg : Theme.onAccent)
+            .frame(maxWidth: .infinity).padding(14)
+            .foregroundStyle(model.isOn ? Theme.onAccent : Theme.fg)
             .background {
-                if model.isOn {
-                    Capsule().fill(Theme.glass2)
-                } else {
-                    Capsule().fill(Theme.heat)
-                        .overlay(Capsule().stroke(.white.opacity(0.45), lineWidth: 1).mask(LinearGradient(colors: [.white, .clear], startPoint: .top, endPoint: .center)))
-                }
+                if model.isOn { Capsule().fill(Theme.heat) } else { Capsule().fill(Theme.fill) }
             }
-            .overlay { if model.isOn { Capsule().strokeBorder(Theme.glassEdge, lineWidth: 0.5) } }
         }
         .buttonStyle(PressStyle())
         .disabled(model.connection != .ok)
@@ -206,52 +296,6 @@ struct PowerButton: View {
     var title: String {
         if model.isOn { return "כבה" }
         return model.chosen == 0 ? "הדלק ללא טיימר" : "הדלק ל-\(model.chosen) דקות"
-    }
-}
-
-/// Off: toggles "no timer". On: adds 15 minutes.
-struct SideButton: View {
-    @EnvironmentObject var model: AppModel
-    var body: some View {
-        if model.isOn && model.unlimited {
-            EmptyView()
-        } else {
-            let selected = !model.isOn && model.chosen == 0
-            Button {
-                if model.isOn { model.addTime(15) }
-                else { model.chosen = model.chosen == 0 ? 45 : 0; Haptics.tap() }
-            } label: {
-                VStack(spacing: 2) {
-                    Text(model.isOn ? "+15" : "∞").font(Theme.num(19, .regular))
-                        .environment(\.layoutDirection, .leftToRight)
-                        .foregroundStyle(selected ? Theme.accentInk : Theme.fg)
-                    Text(model.isOn ? "עוד זמן" : "ללא טיימר").font(.system(size: 12))
-                        .foregroundStyle(selected ? Theme.accentInk : Theme.muted)
-                }
-                .frame(width: 76).frame(maxHeight: .infinity)
-                .glass(38, selected: selected)
-            }
-            .buttonStyle(PressStyle())
-            .fixedSize(horizontal: true, vertical: false)
-            .disabled(model.busy || model.connection != .ok)
-        }
-    }
-}
-
-struct StatusChip: View {
-    @EnvironmentObject var model: AppModel
-    var body: some View {
-        Text(text)
-            .font(.system(size: 13.5, weight: .medium))
-            .foregroundStyle(model.isOn ? Theme.accentInk : Theme.muted)
-            .padding(.horizontal, 14).padding(.vertical, 7)
-            .glass(20)
-    }
-    var text: String {
-        guard let s = model.snapshot else { return "מתחבר לדוד..." }
-        if s.state.isOn { return "מחמם · \(s.state.powerWatts.formatted()) וואט" }
-        if let off = Store.shared.lastOff { return "כבוי · כבה \(Fmt.ago(off, now: model.now))" }
-        return "כבוי"
     }
 }
 
@@ -266,13 +310,13 @@ struct Presets: View {
                 let selected = !model.isOn && model.chosen == p.m
                 Button { model.preset(p.m) } label: {
                     VStack(spacing: 4) {
-                        Image(systemName: p.icon).font(.system(size: 19)).foregroundStyle(selected ? Theme.accentInk : Theme.muted)
+                        Image(systemName: p.icon).font(.system(size: 18)).foregroundStyle(selected ? Theme.accentInk : Theme.muted)
                         Text(p.title).font(.system(size: 13, weight: .medium)).lineLimit(1).minimumScaleFactor(0.8)
                             .foregroundStyle(selected ? Theme.accentInk : Theme.fg)
-                        Text("\(p.m) דק׳").font(.system(size: 12, design: .rounded)).foregroundStyle(Theme.muted)
+                        Text("\(p.m) דק׳").font(.system(size: 11.5, design: .rounded)).foregroundStyle(Theme.muted)
                     }
-                    .frame(maxWidth: .infinity).padding(.vertical, 10).padding(.horizontal, 2)
-                    .glass(22, selected: selected)
+                    .frame(maxWidth: .infinity).padding(.vertical, 9).padding(.horizontal, 2)
+                    .card(22, selected: selected)
                 }
                 .buttonStyle(PressStyle())
             }
@@ -290,7 +334,7 @@ struct Details: View {
         VStack(spacing: 0) {
             Button { withAnimation(.easeInOut(duration: 0.25)) { open.toggle() } } label: {
                 HStack {
-                    Text("פרטים ותזמונים").font(.system(size: 16))
+                    Text("פרטים נוספים").font(.system(size: 16))
                     Spacer()
                     Image(systemName: "chevron.down").font(.system(size: 14, weight: .semibold)).foregroundStyle(Theme.muted)
                         .rotationEffect(.degrees(open ? 180 : 0))
@@ -314,7 +358,7 @@ struct Details: View {
                 .transition(.opacity.combined(with: .move(edge: .top)))
             }
         }
-        .glass(26)
+        .card(26)
     }
 }
 
@@ -342,56 +386,54 @@ struct Readings: View {
             Text(label).font(.system(size: 12)).foregroundStyle(Theme.muted)
         }
         .frame(maxWidth: .infinity, alignment: .leading)
-        .padding(.horizontal, 12).padding(.vertical, 11)
-        .glass(18)
+        .padding(.horizontal, 12).padding(.vertical, 10)
+        .card(16, inner: true)
     }
 }
 
-/// iOS settings-style grouped list of schedules.
+/// Breeze-style schedule rows: big time range, days below, switch on the side.
 struct ScheduleList: View {
     @EnvironmentObject var model: AppModel
     @Binding var sheet: ContentView.SheetKind?
 
     var body: some View {
-        VStack(spacing: 0) {
+        VStack(spacing: 8) {
             ForEach(model.schedules) { s in
                 row(time: "\(Fmt.hm(s.startMinutes)) - \(Fmt.hm(s.endMinutes))", days: Fmt.days(s.weekdays), on: true,
-                    open: { sheet = .schedule(s) }, toggle: { model.park(s) })
-                Divider().overlay(Theme.line)
+                    open: { sheet = .schedule(.heater(s)) }, toggle: { model.park(s) })
             }
             ForEach(model.parked) { p in
                 row(time: "\(Fmt.hm(p.startMinutes)) - \(Fmt.hm(p.endMinutes))", days: Fmt.days(p.weekdays) + " · מושבת", on: false,
-                    open: { sheet = .parked(p) }, toggle: { model.unpark(p) })
-                Divider().overlay(Theme.line)
+                    open: { sheet = .schedule(.parked(p)) }, toggle: { model.unpark(p) })
             }
             if model.schedules.count < 8 {
-                Button { sheet = .schedule(nil) } label: {
+                Button { sheet = .schedule(.new) } label: {
                     Text("+ תזמון חדש").font(.system(size: 15)).foregroundStyle(Theme.accentInk)
-                        .frame(maxWidth: .infinity).padding(13).contentShape(Rectangle())
+                        .frame(maxWidth: .infinity).padding(12)
+                        .card(16, inner: true)
                 }
-                .buttonStyle(.plain)
+                .buttonStyle(PressStyle())
             }
         }
-        .glass(20)
-        .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
     }
 
     func row(time: String, days: String, on: Bool, open: @escaping () -> Void, toggle: @escaping () -> Void) -> some View {
         HStack(spacing: 12) {
             Button(action: open) {
                 VStack(alignment: .leading, spacing: 2) {
-                    Text(time).font(Theme.num(19, .light)).environment(\.layoutDirection, .leftToRight)
-                    Text(days).font(.system(size: 12.5)).foregroundStyle(Theme.muted)
+                    Text(time).font(.system(size: 21, design: .rounded)).monospacedDigit().environment(\.layoutDirection, .leftToRight)
+                    Text(days).font(.system(size: 12.5)).foregroundStyle(Theme.muted).lineLimit(1)
                 }
                 .frame(maxWidth: .infinity, alignment: .leading)
-                .opacity(on ? 1 : 0.45)
+                .opacity(on ? 1 : 0.4)
                 .contentShape(Rectangle())
             }
             .buttonStyle(.plain)
             Toggle("", isOn: Binding(get: { on }, set: { _ in toggle() }))
                 .labelsHidden().tint(Theme.ok)
         }
-        .padding(.horizontal, 14).padding(.vertical, 11)
+        .padding(.leading, 14).padding(.trailing, 12).padding(.vertical, 10)
+        .card(16, inner: true)
     }
 }
 
@@ -424,14 +466,14 @@ struct BottomBar: View {
         Button(action: action) {
             HStack(spacing: 10) {
                 Image(systemName: icon).font(.system(size: 16, weight: .semibold)).foregroundStyle(Theme.accentInk)
-                    .frame(width: 34, height: 34)
+                    .frame(width: 32, height: 32)
                     .background(Theme.accentSoft, in: RoundedRectangle(cornerRadius: 12, style: .continuous))
                 VStack(alignment: .leading, spacing: 0) {
                     Text(label).font(.system(size: 11.5)).foregroundStyle(Theme.muted).lineLimit(1)
                     Text(value).font(.system(size: 15, weight: .medium, design: .rounded)).lineLimit(1)
+                        .foregroundStyle(model.isOn ? Theme.fg : Theme.muted)
                 }
                 Spacer(minLength: 0)
-                Image(systemName: "chevron.up").font(.system(size: 11, weight: .semibold)).foregroundStyle(Theme.muted)
             }
             .padding(.horizontal, 12).padding(.vertical, 8)
             .contentShape(Capsule())
@@ -444,41 +486,74 @@ struct BottomBar: View {
 // MARK: - menu
 
 struct MenuSheet: View {
+    @EnvironmentObject var model: AppModel
     @Binding var sheet: ContentView.SheetKind?
+
     var body: some View {
         SheetFrame(title: "תפריט") {
-            VStack(spacing: 0) {
-                row("chart.bar", "צריכה וחיסכון") { go(.stats) }
-                Divider().overlay(Theme.line)
-                row("calendar", "תזמונים") { go(.schedules) }
-                Divider().overlay(Theme.line)
-                row("timer", "כיבוי אוטומטי") { go(.autoOff) }
-                Divider().overlay(Theme.line)
-                row("gearshape", "הגדרות") { go(.settings) }
+            VStack(spacing: 8) {
+                row("calendar", "תזמונים", scheduleSub) { go(.schedules) }
+                row("chart.bar", "צריכה וחיסכון", weekSub) { go(.stats) }
+                row("timer", "כיבוי אוטומטי", "אחרי \(Fmt.hm((model.snapshot?.state.autoShutdownSeconds ?? 0) / 60)) שע׳") { go(.autoOff) }
+                HStack(spacing: 12) {
+                    Image(systemName: "bell").font(.system(size: 18)).foregroundStyle(Theme.accentInk).frame(width: 26)
+                    VStack(alignment: .leading, spacing: 1) {
+                        Text("התראות לטלפון").font(.system(size: 16, weight: .medium))
+                        Text("כשהמים חמים").font(.system(size: 12.5)).foregroundStyle(Theme.muted)
+                    }
+                    Spacer()
+                    Toggle("", isOn: $model.notify).labelsHidden().tint(Theme.ok)
+                }
+                .padding(.horizontal, 14).padding(.vertical, 10)
+                .card(16, inner: true)
+                row("wifi", "החיבור", connSub) { go(.settings) }
             }
-            .glass(20)
-            .clipShape(RoundedRectangle(cornerRadius: 20, style: .continuous))
-            Text("Ember · גרסה \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
+            Text("Ember \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
                 .font(.system(size: 12)).foregroundStyle(Theme.muted).frame(maxWidth: .infinity)
         }
     }
-    /// switch sheets after this one has gone away
-    func go(_ next: ContentView.SheetKind) {
-        sheet = nil
-        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { sheet = next }
+
+    var scheduleSub: String { model.schedules.isEmpty ? "אין" : "\(model.schedules.count) פעילים" }
+    var weekSub: String {
+        let since = Date().addingTimeInterval(-7 * 86_400)
+        let week = Store.shared.sessions.filter { $0.end > since }
+        let mins = Int(week.reduce(0) { $0 + $1.minutes })
+        let cost = week.reduce(0) { $0 + $1.kWh } * model.config.tariff
+        return "השבוע \(Fmt.hm(mins)) שע׳ · ₪\(Int(cost.rounded()))"
     }
-    func row(_ icon: String, _ title: String, action: @escaping () -> Void) -> some View {
+    var connSub: String {
+        switch model.connection {
+        case .ok: return "מחובר · \(model.config.host)"
+        case .connecting: return "מתחבר..."
+        case .away: return "מחוץ לבית"
+        case .noAnswer: return "הדוד לא עונה"
+        case .notSetUp: return "לא מוגדר"
+        }
+    }
+
+    func go(_ next: ContentView.SheetKind) { Self.switchTo(next, $sheet) }
+
+    /// switch sheets after the current one has gone away
+    static func switchTo(_ next: ContentView.SheetKind, _ sheet: Binding<ContentView.SheetKind?>) {
+        sheet.wrappedValue = nil
+        DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { sheet.wrappedValue = next }
+    }
+
+    func row(_ icon: String, _ title: String, _ sub: String, action: @escaping () -> Void) -> some View {
         Button(action: action) {
             HStack(spacing: 12) {
-                Image(systemName: icon).font(.system(size: 17)).foregroundStyle(Theme.accentInk).frame(width: 26)
-                Text(title).font(.system(size: 16))
+                Image(systemName: icon).font(.system(size: 18)).foregroundStyle(Theme.accentInk).frame(width: 26)
+                VStack(alignment: .leading, spacing: 1) {
+                    Text(title).font(.system(size: 16, weight: .medium))
+                    Text(sub).font(.system(size: 12.5)).foregroundStyle(Theme.muted).lineLimit(1)
+                }
                 Spacer()
-                Image(systemName: "chevron.left").font(.system(size: 13, weight: .semibold)).foregroundStyle(Theme.muted)
             }
-            .padding(.horizontal, 14).padding(.vertical, 13)
+            .padding(.horizontal, 14).padding(.vertical, 11)
+            .card(16, inner: true)
             .contentShape(Rectangle())
         }
-        .buttonStyle(.plain)
+        .buttonStyle(PressStyle())
     }
 }
 
@@ -493,8 +568,7 @@ struct SchedulesSheet: View {
         .onChange(of: inner?.id) { _, _ in
             guard let next = inner else { return }
             inner = nil
-            sheet = nil
-            DispatchQueue.main.asyncAfter(deadline: .now() + 0.45) { sheet = next }
+            MenuSheet.switchTo(next, $sheet)
         }
     }
 }
@@ -562,7 +636,7 @@ struct SecondaryStyle: ButtonStyle {
     func makeBody(configuration: Configuration) -> some View {
         configuration.label.font(.system(size: 16, weight: .semibold))
             .frame(maxWidth: .infinity).padding(14)
-            .glass(26)
+            .background(Theme.fill2, in: Capsule())
             .scaleEffect(configuration.isPressed ? 0.97 : 1)
     }
 }

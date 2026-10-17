@@ -100,7 +100,7 @@ struct HeaterWidgetView: View {
                         Text("+15 דק׳").font(.system(size: 14, weight: .semibold)).frame(maxWidth: .infinity).padding(.vertical, 8)
                     }
                     .buttonStyle(.plain)
-                    .glass(14)
+                    .card(14)
                 } else {
                     Text("תזמון הבא").font(.system(size: 13)).foregroundStyle(Theme.muted)
                     if let n = entry.next {
@@ -136,7 +136,7 @@ struct HeaterWidgetView: View {
                     .font(.system(size: 13, weight: .bold))
                     .frame(maxWidth: .infinity).padding(.vertical, 8)
                     .foregroundStyle(entry.isOn ? Theme.fg : Theme.onAccent)
-                    .background(entry.isOn ? AnyShapeStyle(Theme.glass2) : AnyShapeStyle(Theme.heat), in: Capsule())
+                    .background(entry.isOn ? AnyShapeStyle(Theme.fill2) : AnyShapeStyle(Theme.heat), in: Capsule())
             }
             .buttonStyle(.plain)
         } else {

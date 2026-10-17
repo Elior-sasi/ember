@@ -48,44 +48,88 @@ struct AutoOffSheet: View {
 
 // MARK: - schedules
 
-struct ScheduleEditor: View {
-    @Binding var start: Date
-    @Binding var end: Date
-    @Binding var days: Set<Int>
+/// Breeze-style schedule editor: on and off rows with a time box, day chips in one row, an "active" switch.
+struct ScheduleSheet: View {
+    enum Source { case new, heater(HeaterSchedule), parked(ParkedSchedule) }
+    @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) var dismiss
+    let source: Source
+    @State private var start = ScheduleSheet.date(390)
+    @State private var end = ScheduleSheet.date(435)
+    @State private var days: Set<Int> = [0, 1, 2, 3, 4]
+    @State private var active = true
+    @State private var confirmDelete = false
+
+    var isNew: Bool { if case .new = source { return true }; return false }
 
     var body: some View {
-        HStack(spacing: 10) {
-            timeBox("מ-", $start)
-            timeBox("עד", $end)
-        }
-        HStack(spacing: 6) {
-            ForEach(0..<7, id: \.self) { i in
-                let on = days.contains(i)
-                Button {
-                    if on { days.remove(i) } else { days.insert(i) }
-                    Haptics.tap()
-                } label: {
-                    Text(Fmt.dayLetters[i]).font(.system(size: 14))
-                        .frame(maxWidth: .infinity).padding(.vertical, 10)
-                        .foregroundStyle(on ? Theme.accentInk : Theme.fg)
-                        .glass(14, selected: on)
+        SheetFrame(title: isNew ? "תזמון חדש" : "עריכת תזמון") {
+            timeRow("הדלקה", $start)
+            timeRow("כיבוי", $end)
+            HStack(spacing: 6) {
+                ForEach(0..<7, id: \.self) { i in
+                    let on = days.contains(i)
+                    Button {
+                        if on { days.remove(i) } else { days.insert(i) }
+                        Haptics.tap()
+                    } label: {
+                        Text(Fmt.dayLetters[i]).font(.system(size: 14))
+                            .frame(maxWidth: .infinity).padding(.vertical, 9)
+                            .foregroundStyle(on ? Theme.accentInk : Theme.fg)
+                            .background(on ? Theme.accentFill2 : Theme.fill2, in: Capsule())
+                    }
+                    .buttonStyle(.plain)
                 }
-                .buttonStyle(.plain)
+            }
+            Text(days.isEmpty ? "בלי ימים מסומנים, התזמון ירוץ פעם אחת." : "חוזר בימים המסומנים.")
+                .font(.system(size: 13)).foregroundStyle(Theme.muted)
+            HStack {
+                Text("פעיל").font(.system(size: 16))
+                Spacer()
+                Toggle("", isOn: $active).labelsHidden().tint(Theme.ok)
+            }
+            .padding(.horizontal, 14).padding(.vertical, 10)
+            .background(Theme.fill2, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
+            HStack(spacing: 8) {
+                Button("ביטול") { dismiss() }.buttonStyle(SecondaryStyle())
+                Button("שמור") {
+                    model.saveScheduleEdit(source, days: days, start: Self.minutes(start), end: Self.minutes(end), active: active)
+                    dismiss()
+                }
+                .buttonStyle(PrimaryStyle())
+            }
+            if !isNew {
+                Button(confirmDelete ? "לחץ שוב כדי למחוק" : "מחק תזמון") {
+                    if confirmDelete { model.deleteScheduleEdit(source); dismiss() } else { confirmDelete = true }
+                }
+                .foregroundStyle(Theme.bad).frame(maxWidth: .infinity)
             }
         }
-        Text("בלי ימים מסומנים, התזמון ירוץ פעם אחת.").font(.system(size: 13)).foregroundStyle(Theme.muted)
+        .onAppear {
+            switch source {
+            case .new: break
+            case .heater(let e):
+                start = Self.date(e.startMinutes); end = Self.date(e.endMinutes)
+                days = WeekdayBits.indices(e.weekdays); active = true
+            case .parked(let p):
+                start = Self.date(p.startMinutes); end = Self.date(p.endMinutes)
+                days = WeekdayBits.indices(p.weekdays); active = false
+            }
+        }
     }
 
-    func timeBox(_ label: String, _ value: Binding<Date>) -> some View {
-        VStack(alignment: .leading, spacing: 6) {
-            Text(label).font(.system(size: 13)).foregroundStyle(Theme.muted)
+    func timeRow(_ label: String, _ value: Binding<Date>) -> some View {
+        HStack(spacing: 12) {
+            Text(label).font(.system(size: 16))
+            Spacer()
             DatePicker("", selection: value, displayedComponents: .hourAndMinute)
                 .labelsHidden()
                 .environment(\.locale, Locale(identifier: "he_IL"))
-                .frame(maxWidth: .infinity)
-                .padding(8)
-                .glass(14)
+                .frame(width: 140, height: 46)
+                .background(Theme.fill, in: RoundedRectangle(cornerRadius: 14, style: .continuous))
         }
+        .padding(8).padding(.leading, 6)
+        .background(Theme.fill2, in: RoundedRectangle(cornerRadius: 18, style: .continuous))
     }
 
     static func date(_ minutes: Int) -> Date {
@@ -94,74 +138,6 @@ struct ScheduleEditor: View {
     static func minutes(_ d: Date) -> Int {
         let c = Calendar.current.dateComponents([.hour, .minute], from: d)
         return (c.hour ?? 0) * 60 + (c.minute ?? 0)
-    }
-}
-
-struct ScheduleSheet: View {
-    @EnvironmentObject var model: AppModel
-    @Environment(\.dismiss) var dismiss
-    let existing: HeaterSchedule?
-    @State private var start = ScheduleEditor.date(390)
-    @State private var end = ScheduleEditor.date(435)
-    @State private var days: Set<Int> = [0, 1, 2, 3, 4]
-    @State private var confirmDelete = false
-
-    var body: some View {
-        SheetFrame(title: existing == nil ? "תזמון חדש" : "עריכת תזמון") {
-            ScheduleEditor(start: $start, end: $end, days: $days)
-            HStack(spacing: 8) {
-                Button("ביטול") { dismiss() }.buttonStyle(SecondaryStyle())
-                Button("שמור") {
-                    model.saveSchedule(replacing: existing?.slot, days: days,
-                                       start: ScheduleEditor.minutes(start), end: ScheduleEditor.minutes(end))
-                    dismiss()
-                }
-                .buttonStyle(PrimaryStyle())
-            }
-            if let existing {
-                Button(confirmDelete ? "לחץ שוב כדי למחוק" : "מחק תזמון") {
-                    if confirmDelete { model.deleteSchedule(existing); dismiss() } else { confirmDelete = true }
-                }
-                .foregroundStyle(Theme.bad).frame(maxWidth: .infinity)
-            }
-        }
-        .onAppear {
-            if let e = existing {
-                start = ScheduleEditor.date(e.startMinutes); end = ScheduleEditor.date(e.endMinutes)
-                days = WeekdayBits.indices(e.weekdays)
-            }
-        }
-    }
-}
-
-/// A switched-off schedule lives only in the app, so editing it just changes the app's copy.
-struct ParkedSheet: View {
-    @EnvironmentObject var model: AppModel
-    @Environment(\.dismiss) var dismiss
-    let item: ParkedSchedule
-    @State private var start = Date()
-    @State private var end = Date()
-    @State private var days: Set<Int> = []
-
-    var body: some View {
-        SheetFrame(title: "תזמון מושבת") {
-            ScheduleEditor(start: $start, end: $end, days: $days)
-            HStack(spacing: 8) {
-                Button("מחק") { model.deleteParked(item); dismiss() }.buttonStyle(SecondaryStyle())
-                Button("שמור והפעל") {
-                    var p = item
-                    p.weekdays = WeekdayBits.mask(days)
-                    p.startMinutes = ScheduleEditor.minutes(start); p.endMinutes = ScheduleEditor.minutes(end)
-                    model.unpark(p)
-                    dismiss()
-                }
-                .buttonStyle(PrimaryStyle())
-            }
-        }
-        .onAppear {
-            start = ScheduleEditor.date(item.startMinutes); end = ScheduleEditor.date(item.endMinutes)
-            days = WeekdayBits.indices(item.weekdays)
-        }
     }
 }
 

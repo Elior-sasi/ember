@@ -36,7 +36,7 @@ struct SetupView: View {
                         .environment(\.layoutDirection, .leftToRight)
                 }
                 .padding(14).frame(maxWidth: .infinity, alignment: .leading)
-                .glass(20, selected: true)
+                .card(20, selected: true)
                 Button("זה הדוד שלי") { use(h) }.buttonStyle(PrimaryStyle())
 
             case .manual, .connecting:
@@ -130,7 +130,7 @@ struct Field: View {
                 .multilineTextAlignment(ltr ? .leading : .trailing)
                 .environment(\.layoutDirection, ltr ? .leftToRight : .rightToLeft)
                 .padding(12)
-                .glass(14)
+                .card(14, inner: true)
         }
     }
 }
@@ -144,6 +144,6 @@ struct Hint: View {
         }
         .padding(12)
         .frame(maxWidth: .infinity, alignment: .leading)
-        .glass(16)
+        .card(16, inner: true)
     }
 }

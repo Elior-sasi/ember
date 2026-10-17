@@ -65,7 +65,7 @@ struct StatsView: View {
         }
         .frame(maxWidth: .infinity, alignment: .leading)
         .padding(12)
-        .glass(18)
+        .card(16, inner: true)
     }
 
     func totals(_ r: Period) -> [DayTotal] {

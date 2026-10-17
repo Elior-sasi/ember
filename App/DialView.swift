@@ -4,6 +4,7 @@ import SwiftUI
 /// On: shows time left, or time on for runs without a timer.
 struct DialView: View {
     @EnvironmentObject var model: AppModel
+    var onTimerTap: () -> Void = {}
     static let minM = 5, maxM = 150
     private let sweep = 0.75            // 270 degrees of the circle
     private let startAngle = 135.0      // bottom-left, clockwise
@@ -20,7 +21,7 @@ struct DialView: View {
     var body: some View {
         GeometryReader { geo in
             let size = min(geo.size.width, geo.size.height)
-            let r = size / 2 - 30
+            let r = size / 2 - 18
             ZStack {
                 RadialGradient(colors: [Theme.accentSoft, .clear], center: .center, startRadius: 0, endRadius: size * 0.5)
                     .scaleEffect(breathe && model.isOn ? 1.06 : 1)
@@ -37,11 +38,10 @@ struct DialView: View {
                             style: StrokeStyle(lineWidth: 14, lineCap: .round))
                     .rotationEffect(.degrees(startAngle))
                     .frame(width: r * 2, height: r * 2)
-                    .opacity(noTimer && !model.isOn ? 0.5 : 1)
+                    .opacity(model.isOn ? 1 : 0.35)
                     .animation(.easeOut(duration: 0.25), value: fraction)
                 if !model.isOn && !noTimer { knob(r: r) }
                 center(size: size)
-                if !noTimer { steps(size: size) }
             }
             .frame(width: size, height: size)
             .contentShape(Circle())
@@ -52,7 +52,7 @@ struct DialView: View {
             .position(x: geo.size.width / 2, y: geo.size.height / 2)
         }
         .aspectRatio(1, contentMode: .fit)
-        .frame(maxWidth: 320)
+        .frame(maxWidth: 360)
         .environment(\.layoutDirection, .leftToRight)
         .onAppear { breathe = true }
         .accessibilityElement(children: .contain)
@@ -67,67 +67,60 @@ struct DialView: View {
     }
 
     private func center(size: CGFloat) -> some View {
-        VStack(spacing: 4) {
+        VStack(spacing: min(6, size * 0.015)) {
             HStack(alignment: .firstTextBaseline, spacing: 4) {
-                Text(bigText).font(Theme.num(min(92, size * 0.28)))
+                Text(bigText).font(Theme.num(min(96, size * 0.28)))
                     .kerning(-2)
                     .contentTransition(.numericText())
                 if !model.isOn && !noTimer {
-                    Text("דק׳").font(.system(size: min(24, size * 0.075), weight: .light)).foregroundStyle(Theme.muted)
+                    Text("דק׳").font(.system(size: min(26, size * 0.08), weight: .light)).foregroundStyle(Theme.muted)
                 }
             }
             .foregroundStyle(Theme.fg)
-            Text(topLabel).font(.system(size: 15, weight: .semibold)).foregroundStyle(Theme.accentInk)
-            Text(bottomLabel).font(.system(size: 13)).foregroundStyle(Theme.muted)
+            Text(topLabel).font(.system(size: min(15, size * 0.048), weight: .semibold))
+                .foregroundStyle(model.isOn ? Theme.accentInk : Theme.muted)
+            secondLine.font(.system(size: min(13.5, size * 0.042)))
+            if model.isOn, let end = model.snapshot?.endsAt {
+                Button { onTimerTap() } label: {
+                    HStack(spacing: 5) {
+                        Image(systemName: "timer").font(.system(size: min(13, size * 0.04)))
+                        Text(model.unlimited ? "כיבוי אוטומטי ב-" : "נכבה ב-")
+                        Text(Fmt.time(end)).fontWeight(.semibold).monospacedDigit()
+                    }
+                    .font(.system(size: min(13, size * 0.04)))
+                    .foregroundStyle(Theme.accentInk)
+                    .padding(.horizontal, 10).padding(.vertical, 4)
+                    .background(Theme.accent.opacity(0.16), in: Capsule())
+                }
+                .buttonStyle(PressStyle())
+                .padding(.top, 2)
+            }
         }
         .environment(\.layoutDirection, .rightToLeft)
         .multilineTextAlignment(.center)
-        .allowsHitTesting(false)
     }
 
-    private func steps(size: CGFloat) -> some View {
-        HStack {
-            stepButton("−", -5)
-            Spacer()
-            stepButton("+", 5)
+    @ViewBuilder private var secondLine: some View {
+        if model.isOn {
+            (Text("מחמם").foregroundColor(Theme.accentInk) + Text(" · \((model.snapshot?.state.powerWatts ?? 0).formatted()) וואט").foregroundColor(Theme.fg.opacity(0.85)))
+        } else if let off = Store.shared.lastOff {
+            Text("כבה \(Fmt.ago(off, now: model.now))").foregroundStyle(Theme.fg.opacity(0.85))
+        } else {
+            Text(" ")
         }
-        .padding(.horizontal, size * 0.02)
-        .frame(maxHeight: .infinity, alignment: .bottom)
-        .padding(.bottom, size * 0.06)
-    }
-
-    private func stepButton(_ label: String, _ delta: Int) -> some View {
-        Button { model.nudge(delta) } label: {
-            Text(label).font(.system(size: 26, weight: .light)).foregroundStyle(Theme.fg)
-                .frame(width: 50, height: 50)
-                .glass(25)
-        }
-        .buttonStyle(PressStyle())
-        .accessibilityLabel(delta > 0 ? "עוד 5 דקות" : "פחות 5 דקות")
     }
 
     private var topLabel: String {
         if model.isOn { return model.unlimited ? "דולק ללא טיימר" : "נשאר" }
-        return noTimer ? "ללא טיימר" : "זמן חימום"
+        return "כבוי"
     }
     private var bigText: String {
         if model.isOn { return Fmt.clock(model.unlimited ? model.secondsOn : model.secondsLeft) }
         return noTimer ? "∞" : "\(model.chosen)"
     }
-    private var bottomLabel: String {
-        if model.isOn, let end = model.snapshot?.endsAt {
-            return (model.unlimited ? "כיבוי אוטומטי ב-" : "נכבה ב-") + Fmt.time(end)
-        }
-        if noTimer {
-            let auto = (model.snapshot?.state.autoShutdownSeconds ?? 7200) / 60
-            return "ייכבה אוטומטית אחרי \(Fmt.hm(auto)) שע׳"
-        }
-        return "ייכבה ב-" + Fmt.time(model.now.addingTimeInterval(TimeInterval(model.chosen * 60)))
-    }
-
     private func knob(r: CGFloat) -> some View {
         let a = (startAngle + 270 * max(0.004, fraction)) * .pi / 180
-        return Circle().fill(.white)
+        return Circle().fill(.white.opacity(model.isOn ? 1 : 0.8))
             .shadow(color: .black.opacity(0.45), radius: 4, y: 2)
             .frame(width: 26, height: 26)
             .offset(x: cos(a) * r, y: sin(a) * r)
@@ -136,9 +129,9 @@ struct DialView: View {
     private func ticks(r: CGFloat) -> some View {
         Canvas { ctx, sz in
             let c = CGPoint(x: sz.width / 2, y: sz.height / 2)
-            for i in 0...29 {
+            for i in stride(from: 0, through: 29, by: 2) {
                 let a = (startAngle + 270 * Double(i) / 29) * .pi / 180
-                let r1 = r + 18, r2 = r + (i % 6 == 0 ? 27 : 23)
+                let r1 = r - 20, r2 = r - 28
                 var p = Path()
                 p.move(to: CGPoint(x: c.x + cos(a) * r1, y: c.y + sin(a) * r1))
                 p.addLine(to: CGPoint(x: c.x + cos(a) * r2, y: c.y + sin(a) * r2))
