@@ -119,22 +119,31 @@ struct DialView: View {
         return noTimer ? "∞" : "\(model.chosen)"
     }
     private func knob(r: CGFloat) -> some View {
-        let a = (startAngle + 270 * max(0.004, fraction)) * .pi / 180
+        let deg: Double = startAngle + 270.0 * max(0.004, fraction)
+        let a = CGFloat(deg * Double.pi / 180)
+        let x: CGFloat = cos(a) * r
+        let y: CGFloat = sin(a) * r
         return Circle().fill(.white.opacity(model.isOn ? 1 : 0.8))
             .shadow(color: .black.opacity(0.45), radius: 4, y: 2)
             .frame(width: 26, height: 26)
-            .offset(x: cos(a) * r, y: sin(a) * r)
+            .offset(x: x, y: y)
     }
 
     private func ticks(r: CGFloat) -> some View {
-        Canvas { ctx, sz in
-            let c = CGPoint(x: sz.width / 2, y: sz.height / 2)
+        let start = startAngle
+        return Canvas { ctx, sz in
+            let cx: CGFloat = sz.width / 2
+            let cy: CGFloat = sz.height / 2
+            let r1: CGFloat = r - 20
+            let r2: CGFloat = r - 28
             for i in stride(from: 0, through: 29, by: 2) {
-                let a = (startAngle + 270 * Double(i) / 29) * .pi / 180
-                let r1 = r - 20, r2 = r - 28
+                let deg: Double = start + 270.0 * Double(i) / 29.0
+                let a = CGFloat(deg * Double.pi / 180)
+                let ca: CGFloat = cos(a)
+                let sa: CGFloat = sin(a)
                 var p = Path()
-                p.move(to: CGPoint(x: c.x + cos(a) * r1, y: c.y + sin(a) * r1))
-                p.addLine(to: CGPoint(x: c.x + cos(a) * r2, y: c.y + sin(a) * r2))
+                p.move(to: CGPoint(x: cx + ca * r1, y: cy + sa * r1))
+                p.addLine(to: CGPoint(x: cx + ca * r2, y: cy + sa * r2))
                 ctx.stroke(p, with: .color(Theme.muted.opacity(0.45)), lineWidth: 2)
             }
         }
@@ -145,7 +154,7 @@ struct DialView: View {
         let dx = p.x - size / 2, dy = p.y - size / 2
         // ignore the middle of the ring, and the bottom gap where the −/+ buttons sit
         if hypot(dx, dy) < size * 0.22 { return }
-        var deg = Double(atan2(dy, dx)) * 180 / .pi - startAngle
+        var deg: Double = Double(atan2(dy, dx)) * 180.0 / Double.pi - startAngle
         while deg < 0 { deg += 360 }
         while deg >= 360 { deg -= 360 }
         if deg > 270 { return }
