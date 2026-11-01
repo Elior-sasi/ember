@@ -6,11 +6,26 @@ import UIKit
 /// a web page can't do - the water heater (Switcher, home WiFi) and the router (Xiaomi, home WiFi).
 struct HomeOnRoot: View {
     @EnvironmentObject var model: AppModel
+    @State private var splash = true
     var body: some View {
-        HomeOnWebView()
-            .ignoresSafeArea()
-            .background(Color.black)
-            .fullScreenCover(isPresented: $model.showHeater) {
+        ZStack {
+            HomeOnWebView()
+                .ignoresSafeArea()
+                .background(Color.black)
+            if splash {
+                SplashView()
+                    .transition(.opacity)
+                    .zIndex(1)
+            }
+        }
+        .onChange(of: model.webReady) { _, ready in
+            if ready { withAnimation(.easeOut(duration: 0.45)) { splash = false } }
+        }
+        .task {
+            try? await Task.sleep(nanoseconds: 7_000_000_000)   // never stay stuck on the splash
+            withAnimation(.easeOut(duration: 0.45)) { splash = false }
+        }
+        .fullScreenCover(isPresented: $model.showHeater) {
                 ContentView()
                     .environmentObject(model)
                     .environment(\.layoutDirection, .rightToLeft)
@@ -20,6 +35,31 @@ struct HomeOnRoot: View {
             .fullScreenCover(isPresented: $model.showRouter) {
                 RouterScreen().environmentObject(model)
             }
+    }
+}
+
+/// Starts exactly like the system launch screen (logo on black), then the name appears while HomeOn loads.
+struct SplashView: View {
+    @State private var on = false
+    @Environment(\.accessibilityReduceMotion) private var calm
+    var body: some View {
+        ZStack {
+            Color.black.ignoresSafeArea()
+            VStack(spacing: 18) {
+                Image("LaunchLogo")
+                    .resizable().frame(width: 120, height: 120)
+                    .scaleEffect(on && !calm ? 1.06 : 1)
+                    .shadow(color: Color(red: 1, green: 0.6, blue: 0.24).opacity(on ? 0.45 : 0), radius: 26)
+                Text("HomeOn")
+                    .font(.system(size: 34, weight: .bold))
+                    .foregroundStyle(Color(red: 1, green: 0.95, blue: 0.88))
+                    .opacity(on ? 1 : 0)
+                    .offset(y: on || calm ? 0 : 8)
+            }
+            .offset(y: 20)
+        }
+        .accessibilityHidden(true)
+        .onAppear { withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) { on = true } }
     }
 }
 
@@ -35,7 +75,7 @@ struct HomeOnWebView: UIViewRepresentable {
         cfg.allowsInlineMediaPlayback = true
         cfg.mediaTypesRequiringUserActionForPlayback = []
         let ucc = cfg.userContentController
-        ucc.addUserScript(WKUserScript(source: "window.HOMEON_APP=true;", injectionTime: .atDocumentStart, forMainFrameOnly: false))
+        ucc.addUserScript(WKUserScript(source: "window.HOMEON_APP=true;document.documentElement.classList.add(\"in-app\");", injectionTime: .atDocumentStart, forMainFrameOnly: false))
         ucc.addScriptMessageHandler(context.coordinator, contentWorld: .page, name: "homeon")
 
         let wv = WKWebView(frame: .zero, configuration: cfg)
@@ -125,6 +165,9 @@ struct HomeOnWebView: UIViewRepresentable {
             return nil
         }
 
+        func webView(_ webView: WKWebView, didFinish navigation: WKNavigation!) {
+            DispatchQueue.main.asyncAfter(deadline: .now() + 0.35) { self.model.webReady = true }
+        }
         func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { retry(webView) }
         func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { retry(webView) }
         private func retry(_ wv: WKWebView) {

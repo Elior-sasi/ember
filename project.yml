@@ -49,6 +49,7 @@ targets:
         CFBundleLocalizations: [he]
         UILaunchScreen:
           UIColorName: LaunchBackground
+          UIImageName: LaunchLogo
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
         NSLocalNetworkUsageDescription: האפליקציה מדברת עם הדוד והראוטר ישירות ברשת ה-WiFi של הבית.
         NSAppTransportSecurity:
