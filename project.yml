@@ -50,6 +50,9 @@ targets:
         NSLocalNetworkUsageDescription: האפליקציה מדברת עם הדוד ישירות ברשת ה-WiFi של הבית.
         NSSupportsLiveActivities: true
         LSApplicationQueriesSchemes: [switcher, switchersmart]
+        CFBundleURLTypes:
+          - CFBundleURLName: com.elior.dud
+            CFBundleURLSchemes: [ember]
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.elior.dud

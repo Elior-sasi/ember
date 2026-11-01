@@ -12,6 +12,7 @@ struct DudApp: App {
                 .environment(\.layoutDirection, .rightToLeft)
                 .environment(\.locale, Locale(identifier: "he_IL"))
                 .tint(Theme.accent)
+                .onOpenURL { model.handleLink($0) }
         }
     }
 }

@@ -106,6 +106,27 @@ final class AppModel: ObservableObject {
         }
     }
 
+    /// Links from Unplug and other apps:
+    /// ember://on?m=30 (m=0 = no timer), ember://off, ember://add?m=15, ember://toggle, ember://open
+    func handleLink(_ url: URL) {
+        guard url.scheme == "ember" else { return }
+        let q = URLComponents(url: url, resolvingAgainstBaseURL: false)?.queryItems ?? []
+        let m = q.first { $0.name == "m" }.flatMap { Int($0.value ?? "") }
+        switch url.host ?? "" {
+        case "on":
+            let mins = max(0, min(DialView.maxM, m ?? chosen))
+            act(mins == 0 ? "הדוד דולק בלי טיימר" : "הדוד דולק ל-\(mins) דקות") { try await HeaterController.turnOn(minutes: mins) }
+        case "off":
+            act("הדוד כבוי") { try await HeaterController.turnOff() }
+        case "add":
+            addTime(m ?? 15)
+        case "toggle":
+            powerTapped()
+        default:
+            Task { await refresh(quiet: true) }
+        }
+    }
+
     func setAutoShutdown(_ minutes: Int) {
         act("הכיבוי האוטומטי עודכן") {
             try await HeaterController.setAutoShutdown(minutes: minutes)
