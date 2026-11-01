@@ -51,9 +51,10 @@ targets:
           UIColorName: LaunchBackground
           UIImageName: LaunchLogo
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
-        NSLocalNetworkUsageDescription: האפליקציה מדברת עם הדוד והראוטר ישירות ברשת ה-WiFi של הבית.
+        NSLocalNetworkUsageDescription: HomeOn מדברת עם הדוד, הראוטר והטלוויזיה ישירות ברשת ה-WiFi של הבית.
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
+        NSBonjourServices: [_androidtvremote2._tcp]
         NSSupportsLiveActivities: true
         LSApplicationQueriesSchemes: [switcher, switchersmart, smartlife, scriptable]
         CFBundleURLTypes:

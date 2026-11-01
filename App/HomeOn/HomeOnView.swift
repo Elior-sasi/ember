@@ -196,6 +196,31 @@ struct HomeOnWebView: UIViewRepresentable {
                 }
                 model.applyExternal(s)
                 return #"{"ok":true,"on":\#(s.state.isOn),"left":\#(s.state.secondsLeft)}"#
+            case "tv":   // Google TV remote on the home WiFi
+                let tv = TVRemote.shared
+                switch body["cmd"] as? String ?? "" {
+                case "discover":
+                    let list = await tv.discover()
+                    let data = try JSONSerialization.data(withJSONObject: ["ok": true, "tvs": list])
+                    return String(data: data, encoding: .utf8) ?? "{}"
+                case "pair":
+                    try await tv.pairStart(host: body["host"] as? String ?? "")
+                    return #"{"ok":true}"#
+                case "code":
+                    try await tv.pairFinish(code: body["code"] as? String ?? "")
+                    return #"{"ok":true}"#
+                case "key":
+                    try await tv.key(body["k"] as? Int ?? 0)
+                    return #"{"ok":true}"#
+                case "app":
+                    try await tv.app(body["url"] as? String ?? "")
+                    return #"{"ok":true}"#
+                case "forget":
+                    tv.host = nil
+                    return #"{"ok":true}"#
+                default:
+                    return await tv.state()
+                }
             case "haptic":
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 return #"{"ok":true}"#
