@@ -62,8 +62,8 @@ struct SplashView: View {
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
-            VStack(spacing: 18) {
-                ZStack {
+            // the logo sits exactly in the middle, like the system launch screen; the name hangs below it
+            ZStack {
                     // soft glow that grows when the house "turns on"
                     Circle().fill(RadialGradient(colors: [orange.opacity(0.45), .clear], center: .center, startRadius: 0, endRadius: 80))
                         .frame(width: 170, height: 170).offset(y: 18)
@@ -74,26 +74,24 @@ struct SplashView: View {
                         let k = g.size.width / 512
                         ZStack(alignment: .topLeading) {
                             RoundedRectangle(cornerRadius: 16 * k).fill(blue)
-                                .frame(width: 80 * k, height: 64 * k).offset(x: 150 * k, y: 264 * k)
+                                .frame(width: 80 * k, height: 64 * k).offset(x: 166 * k, y: 264 * k)
                                 .opacity(tile1 ? 1 : 0).shadow(color: blue.opacity(0.8), radius: tile1 ? 6 : 0)
                             RoundedRectangle(cornerRadius: 16 * k).fill(orange)
-                                .frame(width: 80 * k, height: 62 * k).offset(x: 250 * k, y: 342 * k)
+                                .frame(width: 80 * k, height: 62 * k).offset(x: 266 * k, y: 342 * k)
                                 .opacity(tile2 ? 1 : 0).shadow(color: orange.opacity(0.8), radius: tile2 ? 6 : 0)
-                            Wave(r: 58 * k, cx: 352 * k, cy: 162 * k).stroke(LinearGradient(colors: [gold, orange], startPoint: .top, endPoint: .bottom), style: StrokeStyle(lineWidth: 26 * k, lineCap: .round))
+                            Wave(r: 58 * k, cx: 368 * k, cy: 162 * k).stroke(LinearGradient(colors: [gold, orange], startPoint: .top, endPoint: .bottom), style: StrokeStyle(lineWidth: 26 * k, lineCap: .round))
                                 .opacity(wave1 ? (pulse ? 0.55 : 1) : 0)
-                            Wave(r: 112 * k, cx: 352 * k, cy: 162 * k).stroke(LinearGradient(colors: [gold, orange], startPoint: .top, endPoint: .bottom), style: StrokeStyle(lineWidth: 26 * k, lineCap: .round))
+                            Wave(r: 112 * k, cx: 368 * k, cy: 162 * k).stroke(LinearGradient(colors: [gold, orange], startPoint: .top, endPoint: .bottom), style: StrokeStyle(lineWidth: 26 * k, lineCap: .round))
                                 .opacity(wave2 ? (pulse ? 1 : 0.55) : 0)
                         }
                     }
                     .frame(width: 120, height: 120)
                 }
-                Text("HomeOn")
+            Text("HomeOn")
                     .font(.system(size: 34, weight: .bold))
                     .foregroundStyle(Color(red: 1, green: 0.95, blue: 0.88))
                     .opacity(name ? 1 : 0)
-                    .offset(y: name || calm ? 0 : 8)
-            }
-            .offset(y: 20)
+                    .offset(y: 60 + 18 + 20 + (name || calm ? 0 : 8))
         }
         .accessibilityHidden(true)
         .onAppear(perform: play)
