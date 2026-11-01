@@ -67,6 +67,9 @@ struct ContentView: View {
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: model.toast)
         .foregroundStyle(Theme.fg)
+        .fullScreenCover(isPresented: $model.showRouter) {
+            RouterScreen().environmentObject(model)
+        }
         .sheet(item: $sheet) { kind in
             Group {
                 switch kind {
@@ -506,6 +509,10 @@ struct MenuSheet: View {
                 }
                 .padding(.horizontal, 14).padding(.vertical, 10)
                 .card(16, inner: true)
+                row("wifi.router", "ראוטר", "מכשירים, מהירות ו-WiFi") {
+                    sheet = nil
+                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { model.showRouter = true }
+                }
                 row("wifi", "החיבור", connSub) { go(.settings) }
             }
             Text("Ember \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")

@@ -13,6 +13,7 @@ final class AppModel: ObservableObject {
     @Published var connection: Connection = .connecting
     @Published var busy = false
     @Published var toast: String?
+    @Published var showRouter = false
     @Published var schedules: [HeaterSchedule] = []
     @Published var parked: [ParkedSchedule] = Store.shared.parked
     @Published var unlimited: Bool = Store.shared.unlimitedRun
@@ -122,6 +123,8 @@ final class AppModel: ObservableObject {
             addTime(m ?? 15)
         case "toggle":
             powerTapped()
+        case "router":
+            showRouter = true
         default:
             Task { await refresh(quiet: true) }
         }

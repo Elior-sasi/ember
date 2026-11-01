@@ -29,6 +29,9 @@ targets:
       - App
       - Shared
       - path: Resources/Assets.xcassets
+      - path: Resources/router-web
+        type: folder
+        buildPhase: resources
     dependencies:
       - package: SwitcherKit
       - target: DudWidget
@@ -47,7 +50,9 @@ targets:
         UILaunchScreen:
           UIColorName: LaunchBackground
         UISupportedInterfaceOrientations: [UIInterfaceOrientationPortrait]
-        NSLocalNetworkUsageDescription: האפליקציה מדברת עם הדוד ישירות ברשת ה-WiFi של הבית.
+        NSLocalNetworkUsageDescription: האפליקציה מדברת עם הדוד והראוטר ישירות ברשת ה-WiFi של הבית.
+        NSAppTransportSecurity:
+          NSAllowsLocalNetworking: true
         NSSupportsLiveActivities: true
         LSApplicationQueriesSchemes: [switcher, switchersmart]
         CFBundleURLTypes:
