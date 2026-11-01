@@ -7,6 +7,7 @@ import UIKit
 struct HomeOnRoot: View {
     @EnvironmentObject var model: AppModel
     @State private var splash = true
+    @State private var started = Date()
     var body: some View {
         ZStack {
             HomeOnWebView()
@@ -19,7 +20,11 @@ struct HomeOnRoot: View {
             }
         }
         .onChange(of: model.webReady) { _, ready in
-            if ready { withAnimation(.easeOut(duration: 0.45)) { splash = false } }
+            if ready {
+                DispatchQueue.main.asyncAfter(deadline: .now() + max(0, 1.5 - Date().timeIntervalSince(started))) {
+                    withAnimation(.easeOut(duration: 0.45)) { splash = false }
+                }
+            }
         }
         .task {
             try? await Task.sleep(nanoseconds: 7_000_000_000)   // never stay stuck on the splash
@@ -38,28 +43,81 @@ struct HomeOnRoot: View {
     }
 }
 
-/// Starts exactly like the system launch screen (logo on black), then the name appears while HomeOn loads.
+/// Starts exactly like the system launch screen (the house on black), then comes alive:
+/// the roof settles, two tiles light up, the signal waves pulse, and the name appears while HomeOn loads.
 struct SplashView: View {
-    @State private var on = false
     @Environment(\.accessibilityReduceMotion) private var calm
+    @State private var roof = false
+    @State private var tile1 = false
+    @State private var tile2 = false
+    @State private var wave1 = false
+    @State private var wave2 = false
+    @State private var name = false
+    @State private var pulse = false
+
+    private let blue = Color(red: 0.353, green: 0.627, blue: 1)
+    private let orange = Color(red: 1, green: 0.541, blue: 0.2)
+    private let gold = Color(red: 1, green: 0.765, blue: 0.353)
+
     var body: some View {
         ZStack {
             Color.black.ignoresSafeArea()
             VStack(spacing: 18) {
-                Image("LaunchLogo")
-                    .resizable().frame(width: 120, height: 120)
-                    .scaleEffect(on && !calm ? 1.06 : 1)
-                    .shadow(color: Color(red: 1, green: 0.6, blue: 0.24).opacity(on ? 0.45 : 0), radius: 26)
+                ZStack {
+                    // soft glow that grows when the house "turns on"
+                    Circle().fill(RadialGradient(colors: [orange.opacity(0.45), .clear], center: .center, startRadius: 0, endRadius: 80))
+                        .frame(width: 170, height: 170).offset(y: 18)
+                        .opacity(tile2 ? 1 : 0)
+                    Image("LaunchLogo").resizable().frame(width: 120, height: 120)
+                        .scaleEffect(x: 1, y: roof ? 1 : 0.97, anchor: .bottom)
+                    GeometryReader { g in
+                        let k = g.size.width / 512
+                        ZStack(alignment: .topLeading) {
+                            RoundedRectangle(cornerRadius: 16 * k).fill(blue)
+                                .frame(width: 80 * k, height: 64 * k).offset(x: 150 * k, y: 264 * k)
+                                .opacity(tile1 ? 1 : 0).shadow(color: blue.opacity(0.8), radius: tile1 ? 6 : 0)
+                            RoundedRectangle(cornerRadius: 16 * k).fill(orange)
+                                .frame(width: 80 * k, height: 62 * k).offset(x: 250 * k, y: 342 * k)
+                                .opacity(tile2 ? 1 : 0).shadow(color: orange.opacity(0.8), radius: tile2 ? 6 : 0)
+                            Wave(r: 58 * k, cx: 352 * k, cy: 162 * k).stroke(LinearGradient(colors: [gold, orange], startPoint: .top, endPoint: .bottom), style: StrokeStyle(lineWidth: 26 * k, lineCap: .round))
+                                .opacity(wave1 ? (pulse ? 0.55 : 1) : 0)
+                            Wave(r: 112 * k, cx: 352 * k, cy: 162 * k).stroke(LinearGradient(colors: [gold, orange], startPoint: .top, endPoint: .bottom), style: StrokeStyle(lineWidth: 26 * k, lineCap: .round))
+                                .opacity(wave2 ? (pulse ? 1 : 0.55) : 0)
+                        }
+                    }
+                    .frame(width: 120, height: 120)
+                }
                 Text("HomeOn")
                     .font(.system(size: 34, weight: .bold))
                     .foregroundStyle(Color(red: 1, green: 0.95, blue: 0.88))
-                    .opacity(on ? 1 : 0)
-                    .offset(y: on || calm ? 0 : 8)
+                    .opacity(name ? 1 : 0)
+                    .offset(y: name || calm ? 0 : 8)
             }
             .offset(y: 20)
         }
         .accessibilityHidden(true)
-        .onAppear { withAnimation(.spring(response: 0.6, dampingFraction: 0.7).delay(0.1)) { on = true } }
+        .onAppear(perform: play)
+    }
+
+    private func play() {
+        if calm { roof = true; tile1 = true; tile2 = true; wave1 = true; wave2 = true; name = true; return }
+        withAnimation(.spring(response: 0.35, dampingFraction: 0.45).delay(0.05)) { roof = true }
+        withAnimation(.easeOut(duration: 0.25).delay(0.30)) { tile1 = true }
+        withAnimation(.easeOut(duration: 0.25).delay(0.50)) { tile2 = true }
+        withAnimation(.easeOut(duration: 0.22).delay(0.72)) { wave1 = true }
+        withAnimation(.easeOut(duration: 0.22).delay(0.90)) { wave2 = true }
+        withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(1.0)) { name = true }
+        withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true).delay(1.2)) { pulse = true }
+    }
+}
+
+/// A quarter circle from the top to the right, like the logo's signal waves.
+struct Wave: Shape {
+    var r: CGFloat, cx: CGFloat, cy: CGFloat
+    func path(in rect: CGRect) -> Path {
+        var p = Path()
+        p.addArc(center: CGPoint(x: cx, y: cy), radius: r, startAngle: .degrees(-90), endAngle: .degrees(0), clockwise: false)
+        return p
     }
 }
 
