@@ -150,6 +150,7 @@ struct HomeOnWebView: UIViewRepresentable {
         wv.navigationDelegate = context.coordinator
         wv.uiDelegate = context.coordinator
         context.coordinator.web = wv
+        TVRemote.shared.onEvent = { [weak wv] json in wv?.evaluateJavaScript("window.tvEvent&&tvEvent(\(json))") }
         wv.load(URLRequest(url: Self.home, cachePolicy: .reloadRevalidatingCacheData))
         return wv
     }
@@ -218,6 +219,29 @@ struct HomeOnWebView: UIViewRepresentable {
                 case "forget":
                     tv.host = nil
                     return #"{"ok":true}"#
+                case "text":
+                    try await tv.text(body["text"] as? String ?? "")
+                    return #"{"ok":true}"#
+                case "listen":
+                    TVDictation.shared.onPartial = { [weak self] t in
+                        let d = (try? JSONSerialization.data(withJSONObject: ["heard": t])).flatMap { String(data: $0, encoding: .utf8) } ?? "{}"
+                        self?.web?.evaluateJavaScript("window.tvEvent&&tvEvent(\(d))")
+                    }
+                    try await TVDictation.shared.start()
+                    return #"{"ok":true}"#
+                case "listenStop":
+                    let t = await TVDictation.shared.stop()
+                    let d = try JSONSerialization.data(withJSONObject: ["ok": true, "text": t])
+                    return String(data: d, encoding: .utf8) ?? "{}"
+                case "volkeys":
+                    if body["on"] as? Bool == true { TVVolumeKeys.shared.start() } else { TVVolumeKeys.shared.stop() }
+                    return #"{"ok":true}"#
+                case "live":
+                    await TVLive.set(body["on"] as? Bool == true, name: body["name"] as? String ?? "Google TV")
+                    return #"{"ok":true,"live":\#(TVLive.isOn)}"#
+                case "sleep":
+                    tv.sleep(minutes: body["min"] as? Int ?? 0)
+                    return tv.stateJSON
                 default:
                     return await tv.state()
                 }

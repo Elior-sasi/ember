@@ -108,5 +108,9 @@ struct DudWidgets: WidgetBundle {
     var body: some Widget {
         HeaterWidget()
         HeaterLiveActivity()
+        TVLiveActivity()
+        if #available(iOS 18.0, *) {
+            TVPowerControl()
+        }
     }
 }

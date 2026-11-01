@@ -56,6 +56,7 @@ targets:
           NSAllowsLocalNetworking: true
         NSBonjourServices: [_androidtvremote2._tcp]
         NSSupportsLiveActivities: true
+        NSSupportsLiveActivitiesFrequentUpdates: false
         LSApplicationQueriesSchemes: [switcher, switchersmart, smartlife, scriptable]
         CFBundleURLTypes:
           - CFBundleURLName: com.elior.dud

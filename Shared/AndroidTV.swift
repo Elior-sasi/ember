@@ -71,6 +71,7 @@ struct PB {
     }
     static func int(_ m: [Int: [Value]], _ f: Int) -> UInt64? { if case .int(let v)? = m[f]?.first { return v }; return nil }
     static func sub(_ m: [Int: [Value]], _ f: Int) -> [Int: [Value]]? { if case .bytes(let d)? = m[f]?.first { return parse(d) }; return nil }
+    static func str(_ m: [Int: [Value]], _ f: Int) -> String? { if case .bytes(let d)? = m[f]?.first { return String(data: d, encoding: .utf8) }; return nil }
 }
 
 // MARK: - our client certificate (made once, kept in the keychain)
@@ -305,6 +306,16 @@ final class TVRemote {
     private var link: TVLink?
     private var active = false
     private(set) var powered: Bool?
+    private(set) var volume: Int?
+    private(set) var volumeMax: Int?
+    private(set) var muted: Bool?
+    private(set) var app: String?
+    private var imeCounter = 0
+    private var fieldCounter = 0
+    private var sleepTask: Task<Void, Never>?
+    private(set) var sleepAt: Date?
+    /// HomeOn's page listens to these (power, volume, app, keyboard on the TV).
+    var onEvent: ((String) -> Void)?
     private let pairing = TVPairing()
 
     var host: String? {
@@ -341,7 +352,52 @@ final class TVRemote {
         }
         if m[2] != nil { l.send(PB.build { $0.msg(2, PB.build { $0.int(1, 622) }) }); active = true }
         if let p = PB.sub(m, 8) { l.send(PB.build { $0.msg(9, PB.build { $0.int(1, Int(PB.int(p, 1) ?? 0)) }) }) }
-        if let s = PB.sub(m, 40) { powered = (PB.int(s, 1) ?? 0) != 0 }
+        if let s = PB.sub(m, 40) { powered = (PB.int(s, 1) ?? 0) != 0; emit() }
+        if let k = PB.sub(m, 20), let info = PB.sub(k, 1), let pkg = PB.str(info, 12) { app = pkg; emit() }
+        if let e = PB.sub(m, 21) { imeCounter = Int(PB.int(e, 1) ?? 0); fieldCounter = Int(PB.int(e, 2) ?? 0) }
+        if m[22] != nil { onEvent?(#"{"keyboard":true}"#) }
+        if let v = PB.sub(m, 50) {
+            volumeMax = PB.int(v, 6).map(Int.init); volume = PB.int(v, 7).map(Int.init); muted = (PB.int(v, 8) ?? 0) != 0; emit()
+        }
+    }
+
+    private func emit() { onEvent?(stateJSON) }
+
+    var stateJSON: String {
+        var o: [String: Any] = ["ok": true, "paired": true]
+        if let powered { o["on"] = powered }
+        if let volume { o["volume"] = volume }
+        if let volumeMax { o["volumeMax"] = volumeMax }
+        if let muted { o["muted"] = muted }
+        if let app { o["app"] = app }
+        if let sleepAt { o["sleepAt"] = Int(sleepAt.timeIntervalSince1970) }
+        let d = (try? JSONSerialization.data(withJSONObject: o)) ?? Data()
+        return String(data: d, encoding: .utf8) ?? "{}"
+    }
+
+    /// Types into the text field that's open on the TV (search, passwords).
+    func text(_ t: String) async throws {
+        try await connect()
+        let n = max(0, t.count - 1)
+        link?.send(PB.build { $0.msg(21, PB.build {
+            $0.int(1, imeCounter); $0.int(2, fieldCounter)
+            $0.msg(3, PB.build { $0.int(1, 1); $0.msg(2, PB.build { $0.int(1, n); $0.int(2, n); $0.str(3, t) }) })
+        }) })
+    }
+
+    /// Turns the TV off after some minutes (while HomeOn is running).
+    func sleep(minutes: Int) {
+        sleepTask?.cancel(); sleepTask = nil; sleepAt = nil
+        guard minutes > 0 else { emit(); return }
+        sleepAt = Date().addingTimeInterval(Double(minutes) * 60)
+        sleepTask = Task { @MainActor in
+            try? await Task.sleep(nanoseconds: UInt64(minutes) * 60_000_000_000)
+            guard !Task.isCancelled else { return }
+            try? await self.connect()
+            if self.powered != false { try? await self.key(26) }
+            self.sleepAt = nil; self.emit()
+        }
+        emit()
     }
 
     func key(_ code: Int) async throws {
@@ -357,8 +413,7 @@ final class TVRemote {
     func state() async -> String {
         do { try await connect() } catch { return #"{"ok":false,"paired":\#(TVCert.findIdentity() != nil && host != nil)}"# }
         try? await Task.sleep(nanoseconds: 300_000_000)
-        let p = powered.map { $0 ? "true" : "false" } ?? "null"
-        return #"{"ok":true,"paired":true,"on":\#(p)}"#
+        return stateJSON
     }
 
     /// Finds Google TVs on the home WiFi.

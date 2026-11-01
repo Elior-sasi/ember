@@ -32,6 +32,15 @@ struct DudShortcuts: AppShortcutsProvider {
             "\(.applicationName) כבה את הדוד",
             "תכבה את הדוד ב\(.applicationName)",
         ], shortTitle: "כיבוי הדוד", systemImageName: "power")
+        AppShortcut(intent: TVPowerIntent(), phrases: [
+            "תדליק את הטלוויזיה ב\(.applicationName)",
+            "תכבה את הטלוויזיה ב\(.applicationName)",
+            "\(.applicationName) טלוויזיה",
+        ], shortTitle: "טלוויזיה", systemImageName: "tv")
+        AppShortcut(intent: TVOpenAppIntent(), phrases: [
+            "תפתח את \(\.$app) בטלוויזיה ב\(.applicationName)",
+            "\(.applicationName) תפתח \(\.$app)",
+        ], shortTitle: "אפליקציה בטלוויזיה", systemImageName: "play.tv")
         AppShortcut(intent: HeaterStatusIntent(), phrases: [
             "מה מצב הדוד ב\(.applicationName)",
             "האם הדוד דולק ב\(.applicationName)",
