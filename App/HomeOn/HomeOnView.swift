@@ -64,9 +64,12 @@ struct SplashView: View {
             Color.black.ignoresSafeArea()
             // the logo sits exactly in the middle, like the system launch screen; the name hangs below it
             ZStack {
-                    // soft glow that grows when the house "turns on"
-                    Circle().fill(RadialGradient(colors: [orange.opacity(0.45), .clear], center: .center, startRadius: 0, endRadius: 80))
-                        .frame(width: 170, height: 170).offset(y: 18)
+                                        // two soft glows, blue and orange, each lighting up with its tile
+                    Circle().fill(RadialGradient(colors: [Color(red: 0.24, green: 0.545, blue: 1).opacity(0.26), .clear], center: .center, startRadius: 0, endRadius: 85))
+                        .frame(width: 180, height: 180).offset(x: -26, y: 6)
+                        .opacity(tile1 ? 1 : 0)
+                    Circle().fill(RadialGradient(colors: [orange.opacity(0.26), .clear], center: .center, startRadius: 0, endRadius: 85))
+                        .frame(width: 180, height: 180).offset(x: 26, y: 20)
                         .opacity(tile2 ? 1 : 0)
                     Image("LaunchLogo").resizable().frame(width: 120, height: 120)
                         .scaleEffect(x: 1, y: roof ? 1 : 0.97, anchor: .bottom)
