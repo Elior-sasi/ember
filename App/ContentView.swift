@@ -67,9 +67,6 @@ struct ContentView: View {
         }
         .animation(.spring(response: 0.3, dampingFraction: 0.8), value: model.toast)
         .foregroundStyle(Theme.fg)
-        .fullScreenCover(isPresented: $model.showRouter) {
-            RouterScreen().environmentObject(model)
-        }
         .sheet(item: $sheet) { kind in
             Group {
                 switch kind {
@@ -122,11 +119,16 @@ struct Header: View {
 
     var body: some View {
         HStack(spacing: 4) {
-            Text("Ember")
+            Button { model.showHeater = false } label: {
+                Image(systemName: "chevron.right").font(.system(size: 17, weight: .semibold))
+                    .frame(width: 44, height: 44).background(Theme.fill, in: Circle())
+            }
+            .buttonStyle(PressStyle())
+            .accessibilityLabel("חזרה ל-HomeOn")
+            Text("דוד")
                 .font(.system(size: 26, weight: .bold))
                 .kerning(-0.8)
-                .foregroundStyle(LinearGradient(colors: [Theme.fg, Theme.fg, Theme.accent], startPoint: .leading, endPoint: .trailing))
-                .environment(\.layoutDirection, .leftToRight)
+                .padding(.leading, 6)
             Spacer()
             Button { Task { await model.refresh() } } label: {
                 HStack(spacing: 7) {
@@ -509,13 +511,9 @@ struct MenuSheet: View {
                 }
                 .padding(.horizontal, 14).padding(.vertical, 10)
                 .card(16, inner: true)
-                row("wifi.router", "ראוטר", "מכשירים, מהירות ו-WiFi") {
-                    sheet = nil
-                    DispatchQueue.main.asyncAfter(deadline: .now() + 0.4) { model.showRouter = true }
-                }
                 row("wifi", "החיבור", connSub) { go(.settings) }
             }
-            Text("Ember \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
+            Text("HomeOn \(Bundle.main.infoDictionary?["CFBundleShortVersionString"] as? String ?? "1.0")")
                 .font(.system(size: 12)).foregroundStyle(Theme.muted).frame(maxWidth: .infinity)
         }
     }

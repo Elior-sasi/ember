@@ -14,6 +14,7 @@ final class AppModel: ObservableObject {
     @Published var busy = false
     @Published var toast: String?
     @Published var showRouter = false
+    @Published var showHeater = false
     @Published var schedules: [HeaterSchedule] = []
     @Published var parked: [ParkedSchedule] = Store.shared.parked
     @Published var unlimited: Bool = Store.shared.unlimitedRun
@@ -125,6 +126,8 @@ final class AppModel: ObservableObject {
             powerTapped()
         case "router":
             showRouter = true
+        case "open", "heater":
+            showHeater = true
         default:
             Task { await refresh(quiet: true) }
         }
@@ -153,6 +156,9 @@ final class AppModel: ObservableObject {
             }
         }
     }
+
+    /// A command sent from HomeOn's page - keep the heater screen in sync.
+    func applyExternal(_ s: Snapshot) { apply(s) }
 
     private func apply(_ s: Snapshot) {
         snapshot = s

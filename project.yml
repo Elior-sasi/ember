@@ -44,7 +44,7 @@ targets:
     info:
       path: Resources/Info.plist
       properties:
-        CFBundleDisplayName: Ember
+        CFBundleDisplayName: HomeOn
         CFBundleDevelopmentRegion: he
         CFBundleLocalizations: [he]
         UILaunchScreen:
@@ -54,15 +54,18 @@ targets:
         NSAppTransportSecurity:
           NSAllowsLocalNetworking: true
         NSSupportsLiveActivities: true
-        LSApplicationQueriesSchemes: [switcher, switchersmart]
+        LSApplicationQueriesSchemes: [switcher, switchersmart, smartlife, scriptable]
         CFBundleURLTypes:
           - CFBundleURLName: com.elior.dud
-            CFBundleURLSchemes: [ember]
+            CFBundleURLSchemes: [ember, homeon]
+        NSCameraUsageDescription: לסריקת קוד QR בחיבור ל-Smart Life.
+        NSMicrophoneUsageDescription: לפקודות קוליות בעברית.
+        NSSpeechRecognitionUsageDescription: לפקודות קוליות בעברית.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.elior.dud
         ASSETCATALOG_COMPILER_APPICON_NAME: AppIcon
-        INFOPLIST_KEY_CFBundleDisplayName: Ember
+        INFOPLIST_KEY_CFBundleDisplayName: HomeOn
 
   DudWidget:
     type: app-extension
@@ -82,7 +85,7 @@ targets:
     info:
       path: Resources/Widget-Info.plist
       properties:
-        CFBundleDisplayName: Ember
+        CFBundleDisplayName: HomeOn
         NSExtension:
           NSExtensionPointIdentifier: com.apple.widgetkit-extension
         NSSupportsLiveActivities: true

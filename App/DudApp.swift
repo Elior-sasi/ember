@@ -7,7 +7,7 @@ struct DudApp: App {
 
     var body: some Scene {
         WindowGroup {
-            ContentView()
+            HomeOnRoot()
                 .environmentObject(model)
                 .environment(\.layoutDirection, .rightToLeft)
                 .environment(\.locale, Locale(identifier: "he_IL"))
