@@ -25,7 +25,7 @@ struct RouterWebView: UIViewRepresentable {
         ucc.addUserScript(WKUserScript(source: "window.__haloStore = \(json);", injectionTime: .atDocumentStart, forMainFrameOnly: true))
         // A back button in Halo's own header, so the router feels like part of the app.
         let back = """
-        addEventListener('DOMContentLoaded',function(){var r=document.querySelector('header.top');if(!r)return;
+        (function(f){document.readyState==='loading'?addEventListener('DOMContentLoaded',f):f()})(function(){var r=document.querySelector('header.top');if(!r||document.querySelector('.hoBack'))return;
         var b=document.createElement('button');b.className='menu-btn';b.setAttribute('aria-label','חזרה');
         b.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';
         b.style.cssText='width:44px;height:44px;border-radius:50%;flex:none';b.onclick=function(){window.webkit.messageHandlers.emberClose.postMessage('close')};r.insertBefore(b,r.firstChild)});
@@ -41,9 +41,15 @@ struct RouterWebView: UIViewRepresentable {
         wv.scrollView.contentInsetAdjustmentBehavior = .never
         wv.allowsBackForwardNavigationGestures = false
         if #available(iOS 16.4, *) { wv.isInspectable = true }
-        if let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "router-web") {
-            wv.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+        // The router screen lives with HomeOn online (so its look updates without reinstalling);
+        // the copy inside the app is the fallback when there's no internet.
+        wv.navigationDelegate = context.coordinator
+        context.coordinator.fallback = { [weak wv] in
+            if let url = Bundle.main.url(forResource: "index", withExtension: "html", subdirectory: "router-web") {
+                wv?.loadFileURL(url, allowingReadAccessTo: url.deletingLastPathComponent())
+            }
         }
+        wv.load(URLRequest(url: URL(string: "https://elior-sasi.github.io/unplug/router/?app=1")!, cachePolicy: .reloadRevalidatingCacheData, timeoutInterval: 8))
         return wv
     }
 
@@ -54,9 +60,14 @@ struct RouterWebView: UIViewRepresentable {
         uiView.configuration.userContentController.removeScriptMessageHandler(forName: "halo", contentWorld: .page)
     }
 
-    final class Closer: NSObject, WKScriptMessageHandler {
+    final class Closer: NSObject, WKScriptMessageHandler, WKNavigationDelegate {
         let onClose: () -> Void
+        var fallback: (() -> Void)?
+        private var fellBack = false
         init(_ f: @escaping () -> Void) { onClose = f }
+        func webView(_ webView: WKWebView, didFailProvisionalNavigation navigation: WKNavigation!, withError error: Error) { useLocal() }
+        func webView(_ webView: WKWebView, didFail navigation: WKNavigation!, withError error: Error) { useLocal() }
+        private func useLocal() { if !fellBack { fellBack = true; fallback?() } }
         func userContentController(_ c: WKUserContentController, didReceive message: WKScriptMessage) {
             DispatchQueue.main.async { self.onClose() }
         }
