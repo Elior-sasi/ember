@@ -119,7 +119,16 @@ struct SplashView: View {
     private func play() {
         guard !played else { return }
         played = true
-        if calm { roof = true; tile1 = true; tile2 = true; wave1 = true; wave2 = true; name = true; return }
+        if calm {
+            // Reduce Motion: no bouncing or pulsing, only soft fades one after another
+            roof = true
+            withAnimation(.easeInOut(duration: 0.4).delay(0.3)) { tile1 = true }
+            withAnimation(.easeInOut(duration: 0.4).delay(0.6)) { tile2 = true }
+            withAnimation(.easeInOut(duration: 0.4).delay(0.9)) { wave1 = true }
+            withAnimation(.easeInOut(duration: 0.4).delay(1.15)) { wave2 = true }
+            withAnimation(.easeInOut(duration: 0.4).delay(1.4)) { name = true }
+            return
+        }
         // starts a moment after launch, so the system launch screen has gone and the whole show is seen
         let t0 = 0.3
         withAnimation(.spring(response: 0.45, dampingFraction: 0.45).delay(t0)) { roof = true }
