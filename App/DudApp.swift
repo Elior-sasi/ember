@@ -5,6 +5,8 @@ import AppIntents
 struct DudApp: App {
     @StateObject private var model = AppModel()
 
+    init() { HomeGeo.shared.start() }
+
     var body: some Scene {
         WindowGroup {
             HomeOnRoot()
@@ -41,6 +43,20 @@ struct DudShortcuts: AppShortcutsProvider {
             "תפתח את \(\.$app) בטלוויזיה ב\(.applicationName)",
             "\(.applicationName) תפתח \(\.$app)",
         ], shortTitle: "אפליקציה בטלוויזיה", systemImageName: "play.tv")
+        AppShortcut(intent: DeviceOnIntent(), phrases: [
+            "תדליק את \(\.$device) ב\(.applicationName)",
+            "הדלק את \(\.$device) ב\(.applicationName)",
+            "\(.applicationName) תדליק \(\.$device)",
+        ], shortTitle: "הדלקת מכשיר", systemImageName: "power.circle.fill")
+        AppShortcut(intent: DeviceOffIntent(), phrases: [
+            "תכבה את \(\.$device) ב\(.applicationName)",
+            "כבה את \(\.$device) ב\(.applicationName)",
+            "\(.applicationName) תכבה \(\.$device)",
+        ], shortTitle: "כיבוי מכשיר", systemImageName: "power.circle")
+        AppShortcut(intent: RunSceneIntent(), phrases: [
+            "תפעיל \(\.$scene) ב\(.applicationName)",
+            "\(.applicationName) \(\.$scene)",
+        ], shortTitle: "סצנה", systemImageName: "sparkles")
         AppShortcut(intent: HeaterStatusIntent(), phrases: [
             "מה מצב הדוד ב\(.applicationName)",
             "האם הדוד דולק ב\(.applicationName)",

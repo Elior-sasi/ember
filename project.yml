@@ -64,6 +64,8 @@ targets:
         NSCameraUsageDescription: לסריקת קוד QR בחיבור ל-Smart Life.
         NSMicrophoneUsageDescription: לפקודות קוליות בעברית.
         NSSpeechRecognitionUsageDescription: לפקודות קוליות בעברית.
+        NSLocationWhenInUseUsageDescription: כדי לסמן איפה הבית.
+        NSLocationAlwaysAndWhenInUseUsageDescription: כדי לכבות מכשירים כשאתה יוצא מהבית ולהדליק כשאתה חוזר, גם כשהאפליקציה סגורה.
     settings:
       base:
         PRODUCT_BUNDLE_IDENTIFIER: com.elior.dud
