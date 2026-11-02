@@ -229,6 +229,22 @@ enum HomeNative {
                 await WashLive.update(device: dev, name: body["name"] as? String ?? "מכונת כביסה", end: end, phase: body["phase"] as? String ?? "")
             }
             return json(["ok": true])
+        case "notify":   // a local notification at a set time (toaster done, etc.)
+            let id = "homeon." + (body["id"] as? String ?? "n")
+            let c = UNUserNotificationCenter.current()
+            c.removePendingNotificationRequests(withIdentifiers: [id])
+            if body["cmd"] as? String == "cancel" { return json(["ok": true]) }
+            let ok = (try? await c.requestAuthorization(options: [.alert, .sound])) ?? false
+            let at = (body["at"] as? Double ?? 0) / 1000
+            let secs = at - Date().timeIntervalSince1970
+            guard ok, secs > 1 else { return json(["ok": ok]) }
+            let n = UNMutableNotificationContent()
+            n.title = body["title"] as? String ?? "HomeOn"
+            n.body = body["body"] as? String ?? ""
+            n.sound = .default
+            n.interruptionLevel = .timeSensitive
+            try await c.add(UNNotificationRequest(identifier: id, content: n, trigger: UNTimeIntervalNotificationTrigger(timeInterval: secs, repeats: false)))
+            return json(["ok": true])
         default:
             return nil
         }

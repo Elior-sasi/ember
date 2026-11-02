@@ -245,7 +245,7 @@ struct HomeOnWebView: UIViewRepresentable {
                 default:
                     return await tv.state()
                 }
-            case "config", "geo", "activity":
+            case "config", "geo", "activity", "notify":
                 return try await HomeNative.handle(action, body) ?? "{}"
             case "haptic":
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
