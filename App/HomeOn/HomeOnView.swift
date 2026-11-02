@@ -6,30 +6,25 @@ import UIKit
 /// a web page can't do - the water heater (Switcher, home WiFi) and the router (Xiaomi, home WiFi).
 struct HomeOnRoot: View {
     @EnvironmentObject var model: AppModel
+    @Environment(\.scenePhase) private var phase
     @State private var splash = true
-    @State private var started = Date()
+    /// When the person actually sees the app. iOS may start ("prewarm") the app long before that,
+    /// so the splash clock starts at the first time the app becomes active, not at launch.
+    @State private var shownAt: Date?
     var body: some View {
         ZStack {
             HomeOnWebView()
                 .ignoresSafeArea()
                 .background(Color.black)
             if splash {
-                SplashView()
+                SplashView(active: shownAt != nil)
                     .transition(.opacity)
                     .zIndex(1)
             }
         }
-        .onChange(of: model.webReady) { _, ready in
-            if ready {
-                DispatchQueue.main.asyncAfter(deadline: .now() + max(0, 2.7 - Date().timeIntervalSince(started))) {
-                    withAnimation(.easeOut(duration: 0.45)) { splash = false }
-                }
-            }
-        }
-        .task {
-            try? await Task.sleep(nanoseconds: 7_000_000_000)   // never stay stuck on the splash
-            withAnimation(.easeOut(duration: 0.45)) { splash = false }
-        }
+        .onAppear { if phase == .active { shown() } }
+        .onChange(of: phase) { _, p in if p == .active { shown() } }
+        .onChange(of: model.webReady) { _, ready in if ready { hideWhenSeen() } }
         .fullScreenCover(isPresented: $model.showHeater) {
                 ContentView()
                     .environmentObject(model)
@@ -41,12 +36,30 @@ struct HomeOnRoot: View {
                 RouterScreen().environmentObject(model)
             }
     }
+
+    private func shown() {
+        guard shownAt == nil else { return }
+        shownAt = Date()
+        if model.webReady { hideWhenSeen() }
+        DispatchQueue.main.asyncAfter(deadline: .now() + 7) {   // never stay stuck on the splash
+            withAnimation(.easeOut(duration: 0.45)) { splash = false }
+        }
+    }
+    private func hideWhenSeen() {
+        guard let t = shownAt else { return }   // not seen yet: shown() will call again
+        DispatchQueue.main.asyncAfter(deadline: .now() + max(0, 2.6 - Date().timeIntervalSince(t))) {
+            withAnimation(.easeOut(duration: 0.45)) { splash = false }
+        }
+    }
 }
 
 /// Starts exactly like the system launch screen (the house on black), then comes alive:
 /// the roof settles, two tiles light up, the signal waves pulse, and the name appears while HomeOn loads.
 struct SplashView: View {
+    /// true once the app is really on screen
+    var active: Bool
     @Environment(\.accessibilityReduceMotion) private var calm
+    @State private var played = false
     @State private var roof = false
     @State private var tile1 = false
     @State private var tile2 = false
@@ -99,13 +112,16 @@ struct SplashView: View {
                     .offset(y: 60 + 18 + 20 + (name || calm ? 0 : 8))
         }
         .accessibilityHidden(true)
-        .onAppear(perform: play)
+        .onAppear { if active { play() } }
+        .onChange(of: active) { _, a in if a { play() } }
     }
 
     private func play() {
+        guard !played else { return }
+        played = true
         if calm { roof = true; tile1 = true; tile2 = true; wave1 = true; wave2 = true; name = true; return }
         // starts a moment after launch, so the system launch screen has gone and the whole show is seen
-        let t0 = 0.45
+        let t0 = 0.3
         withAnimation(.spring(response: 0.45, dampingFraction: 0.45).delay(t0)) { roof = true }
         withAnimation(.easeOut(duration: 0.35).delay(t0 + 0.35)) { tile1 = true }
         withAnimation(.easeOut(duration: 0.35).delay(t0 + 0.65)) { tile2 = true }
