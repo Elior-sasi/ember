@@ -90,6 +90,8 @@ struct SplashView: View {
                     }
                     .frame(width: 120, height: 120)
                 }
+                // the logo is a picture, not text: never mirror it for Hebrew
+                .environment(\.layoutDirection, .leftToRight)
             Text("HomeOn")
                     .font(.system(size: 34, weight: .bold))
                     .foregroundStyle(Color(red: 1, green: 0.95, blue: 0.88))
