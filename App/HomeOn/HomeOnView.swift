@@ -21,7 +21,7 @@ struct HomeOnRoot: View {
         }
         .onChange(of: model.webReady) { _, ready in
             if ready {
-                DispatchQueue.main.asyncAfter(deadline: .now() + max(0, 1.5 - Date().timeIntervalSince(started))) {
+                DispatchQueue.main.asyncAfter(deadline: .now() + max(0, 2.7 - Date().timeIntervalSince(started))) {
                     withAnimation(.easeOut(duration: 0.45)) { splash = false }
                 }
             }
@@ -94,7 +94,7 @@ struct SplashView: View {
                 .environment(\.layoutDirection, .leftToRight)
             Text("HomeOn")
                     .font(.system(size: 34, weight: .bold))
-                    .foregroundStyle(Color(red: 1, green: 0.95, blue: 0.88))
+                    .foregroundStyle(.white)
                     .opacity(name ? 1 : 0)
                     .offset(y: 60 + 18 + 20 + (name || calm ? 0 : 8))
         }
@@ -104,13 +104,15 @@ struct SplashView: View {
 
     private func play() {
         if calm { roof = true; tile1 = true; tile2 = true; wave1 = true; wave2 = true; name = true; return }
-        withAnimation(.spring(response: 0.35, dampingFraction: 0.45).delay(0.05)) { roof = true }
-        withAnimation(.easeOut(duration: 0.25).delay(0.30)) { tile1 = true }
-        withAnimation(.easeOut(duration: 0.25).delay(0.50)) { tile2 = true }
-        withAnimation(.easeOut(duration: 0.22).delay(0.72)) { wave1 = true }
-        withAnimation(.easeOut(duration: 0.22).delay(0.90)) { wave2 = true }
-        withAnimation(.spring(response: 0.5, dampingFraction: 0.8).delay(1.0)) { name = true }
-        withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true).delay(1.2)) { pulse = true }
+        // starts a moment after launch, so the system launch screen has gone and the whole show is seen
+        let t0 = 0.45
+        withAnimation(.spring(response: 0.45, dampingFraction: 0.45).delay(t0)) { roof = true }
+        withAnimation(.easeOut(duration: 0.35).delay(t0 + 0.35)) { tile1 = true }
+        withAnimation(.easeOut(duration: 0.35).delay(t0 + 0.65)) { tile2 = true }
+        withAnimation(.easeOut(duration: 0.3).delay(t0 + 0.95)) { wave1 = true }
+        withAnimation(.easeOut(duration: 0.3).delay(t0 + 1.2)) { wave2 = true }
+        withAnimation(.spring(response: 0.55, dampingFraction: 0.8).delay(t0 + 1.4)) { name = true }
+        withAnimation(.easeInOut(duration: 0.7).repeatForever(autoreverses: true).delay(t0 + 1.5)) { pulse = true }
     }
 }
 
