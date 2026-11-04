@@ -109,7 +109,7 @@ struct SetupView: View {
         guard octets.count == 4,
               octets.allSatisfy({ $0.count <= 3 && UInt8($0) != nil })
         else {
-            error = "כתובת IP לא תקינה. צריך ארבעה מספרים בין 0 ל־255, למשל 192.168.31.63"
+            error = "כתובת IP לא תקינה. צריך ארבעה מספרים בין 0 ל־255, למשל 192.168.1.37"
             return
         }
         guard id.count == 6, Data(hexString: id) != nil else { error = "מזהה המכשיר הוא 6 תווים: ספרות ואותיות a-f"; return }
@@ -166,7 +166,6 @@ struct Field: View {
                     .keyboardType(keyboard)
                     .textInputAutocapitalization(.never)
                     .autocorrectionDisabled()
-                    .textContentType(.none)
                     .font(.system(size: 17, design: ltr ? .rounded : .default))
                     .multilineTextAlignment(ltr ? .leading : .trailing)
                     .focused($isFocused)
