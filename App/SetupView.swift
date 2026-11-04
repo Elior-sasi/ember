@@ -105,7 +105,13 @@ struct SetupView: View {
         error = nil
         let ip = host.trimmingCharacters(in: .whitespaces)
         let id = deviceID.trimmingCharacters(in: .whitespaces).lowercased()
-        guard ip.split(separator: ".").count == 4 else { error = "כתובת ה-IP צריכה להיראות כמו 192.168.1.37"; return }
+        let octets = ip.split(separator: ".", omittingEmptySubsequences: false)
+        guard octets.count == 4,
+              octets.allSatisfy({ $0.count <= 3 && UInt8($0) != nil })
+        else {
+            error = "כתובת IP לא תקינה. צריך ארבעה מספרים בין 0 ל־255, למשל 192.168.31.63"
+            return
+        }
         guard id.count == 6, Data(hexString: id) != nil else { error = "מזהה המכשיר הוא 6 תווים: ספרות ואותיות a-f"; return }
         phase = .connecting
         Task {
@@ -150,19 +156,45 @@ struct Field: View {
     var placeholder = ""
     var keyboard: UIKeyboardType = .default
     var ltr = true
+    @FocusState private var isFocused: Bool
 
     var body: some View {
         VStack(alignment: .leading, spacing: 6) {
             Text(label).font(.system(size: 13)).foregroundStyle(Theme.muted)
-            TextField(placeholder, text: $text)
-                .keyboardType(keyboard)
-                .textInputAutocapitalization(.never)
-                .autocorrectionDisabled()
-                .font(.system(size: 17, design: ltr ? .rounded : .default))
-                .multilineTextAlignment(ltr ? .leading : .trailing)
-                .environment(\.layoutDirection, ltr ? .leftToRight : .rightToLeft)
-                .padding(12)
-                .card(14, inner: true)
+            HStack(spacing: 8) {
+                TextField(placeholder, text: $text)
+                    .keyboardType(keyboard)
+                    .textInputAutocapitalization(.never)
+                    .autocorrectionDisabled()
+                    .textContentType(.none)
+                    .font(.system(size: 17, design: ltr ? .rounded : .default))
+                    .multilineTextAlignment(ltr ? .leading : .trailing)
+                    .focused($isFocused)
+                    .accessibilityLabel(label)
+                    .frame(maxWidth: .infinity, minHeight: 48, alignment: ltr ? .leading : .trailing)
+
+                // A separate clear control works even when iOS text selection
+                // cannot reach the beginning of a long pasted value.
+                if !text.isEmpty {
+                    Button {
+                        isFocused = false
+                        text = ""
+                    } label: {
+                        Label("נקה", systemImage: "xmark.circle.fill")
+                            .font(.system(size: 15, weight: .semibold))
+                            .foregroundStyle(Theme.muted)
+                            .frame(minWidth: 70, minHeight: 48)
+                            .contentShape(Rectangle())
+                    }
+                    .buttonStyle(.plain)
+                    .accessibilityLabel("נקה " + label)
+                    .accessibilityHint("מוחק את כל התוכן בשדה בלחיצה אחת")
+                }
+            }
+            .environment(\.layoutDirection, ltr ? .leftToRight : .rightToLeft)
+            .padding(.horizontal, 10)
+            .padding(.vertical, 4)
+            .card(14, inner: true)
         }
     }
 }
