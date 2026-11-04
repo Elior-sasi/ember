@@ -4,6 +4,7 @@ import SwitcherKit
 /// First run: find the heater on the network, or enter its address by hand.
 struct SetupView: View {
     @EnvironmentObject var model: AppModel
+    @Environment(\.dismiss) private var dismiss
     @State private var phase: Phase = .intro
     @State private var host = ""
     @State private var deviceID = ""
@@ -61,6 +62,12 @@ struct SetupView: View {
             }
         }
         .padding(.top, 8)
+        .onAppear {
+            if model.config.isComplete && host.isEmpty {
+                host = model.config.host
+                deviceID = model.config.deviceID
+            }
+        }
     }
 
     private func search() {
@@ -76,9 +83,22 @@ struct SetupView: View {
     }
 
     private func use(_ h: DiscoveredHeater) {
-        var c = model.config
-        c.host = h.ip; c.deviceID = h.deviceID; c.deviceKey = h.deviceKey
-        finish(c)
+        error = nil
+        phase = .connecting
+        Task {
+            do {
+                // Verify control access before accepting a broadcast as a valid pairing.
+                _ = try await SwitcherClient(host: h.ip, deviceID: h.deviceID, deviceKey: h.deviceKey).state()
+                var c = model.config
+                c.host = h.ip; c.deviceID = h.deviceID; c.deviceKey = h.deviceKey
+                finish(c)
+            } catch {
+                phase = .manual
+                host = h.ip
+                deviceID = h.deviceID
+                self.error = "מצאתי את הדוד, אבל לא הצלחתי לאמת את החיבור. בדוק שאתה ברשת הביתית."
+            }
+        }
     }
 
     private func connect() {
@@ -89,6 +109,16 @@ struct SetupView: View {
         guard id.count == 6, Data(hexString: id) != nil else { error = "מזהה המכשיר הוא 6 תווים: ספרות ואותיות a-f"; return }
         phase = .connecting
         Task {
+            // Reuse the stored key first when the IP changed after a new router.
+            if model.config.deviceID.lowercased() == id && model.config.deviceKey.count == 2 {
+                let previous = model.config.deviceKey
+                if (try? await SwitcherClient(host: ip, deviceID: id, deviceKey: previous).state()) != nil {
+                    var c = model.config
+                    c.host = ip; c.deviceID = id; c.deviceKey = previous
+                    finish(c)
+                    return
+                }
+            }
             if let key = await SwitcherClient.findKey(host: ip, deviceID: id) {
                 var c = model.config
                 c.host = ip; c.deviceID = id; c.deviceKey = key
@@ -104,6 +134,8 @@ struct SetupView: View {
         model.saveConfig(c)
         Notifier.requestPermission()
         model.show("הדוד מחובר")
+        model.showHeaterSetup = false
+        dismiss()
     }
 }
 

@@ -15,6 +15,7 @@ final class AppModel: ObservableObject {
     @Published var toast: String?
     @Published var showRouter = false
     @Published var showHeater = false
+    @Published var showHeaterSetup = false
     @Published var webReady = false
     @Published var schedules: [HeaterSchedule] = []
     @Published var parked: [ParkedSchedule] = Store.shared.parked

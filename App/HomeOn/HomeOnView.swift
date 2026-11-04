@@ -32,6 +32,26 @@ struct HomeOnRoot: View {
                     .environment(\.locale, Locale(identifier: "he_IL"))
                     .tint(Theme.accent)
             }
+            .sheet(isPresented: $model.showHeaterSetup, onDismiss: {
+                Task { await model.refresh(quiet: true) }
+            }) {
+                NavigationStack {
+                    ScrollView {
+                        SetupView()
+                            .padding(20)
+                    }
+                    .navigationTitle("חיבור דוד Switcher")
+                    .toolbar {
+                        ToolbarItem(placement: .topBarLeading) {
+                            Button("סגור") { model.showHeaterSetup = false }
+                        }
+                    }
+                }
+                .environmentObject(model)
+                .environment(\.layoutDirection, .rightToLeft)
+                .environment(\.locale, Locale(identifier: "he_IL"))
+                .tint(Theme.accent)
+            }
             .fullScreenCover(isPresented: $model.showRouter) {
                 RouterScreen().environmentObject(model)
             }
@@ -207,6 +227,9 @@ struct HomeOnWebView: UIViewRepresentable {
             switch action {
             case "openHeater":
                 model.showHeater = true
+                return #"{"ok":true}"#
+            case "heaterSetup":
+                model.showHeaterSetup = true
                 return #"{"ok":true}"#
             case "openRouter":
                 model.showRouter = true
