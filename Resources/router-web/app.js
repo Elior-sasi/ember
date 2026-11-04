@@ -65,8 +65,8 @@ const errText = e => {
 
 /* ---------- state ---------- */
 let devs = [], schs = store.get('schs', null), filter = 'all', profile = store.get('profile', 'norm');
-let wifi = { ssid: 'Elior_Home', pw: 'Asif2026!home', ch: '2.4: 6 · 5: 36 · 160MHz', tx: 'max', on: true, guestSsid: 'Elior_Guest', guestPw: 'welcome2026' };
-let online = true, shown = false, paused = false, gDur = 4;
+let wifi = { ssid: LIVE ? 'טוען...' : 'רשת לדוגמה', pw: '', ch: 'לא ידוע', tx: 'max', on: false, guestSsid: 'לא דווח', guestPw: '' };
+let online = true, shown = false, paused = false, gDur = 4, guestKnown = false;
 let lastStatus = null, lastNet = null;
 
 function guessType(name, band) {
@@ -80,8 +80,9 @@ function guessType(name, band) {
   if (/router|mesh|xiaomi-router/.test(n)) return 'router';
   return band === 'cable' ? 'laptop' : 'phone';
 }
-const BAND = { 0: 'cable', 1: '2.4', 2: '5', 3: 'guest', 6: '5' };
-const bandText = b => ({ cable: 'כבל', '2.4': '2.4 GHz', '5': '5 GHz', guest: 'רשת אורחים' }[b] || '');
+/* RD08 / Xiaomi BE6500 Pro firmware connection codes. */
+const BAND = { 1: 'cable', 2: '2.4', 3: '5', 7: 'guest', 9: 'iot' };
+const bandText = b => ({ cable: 'כבל', '2.4': '2.4 GHz', '5': '5 GHz', guest: 'רשת אורחים', iot: 'רשת IoT' }[b] || 'חיבור לא מזוהה');
 const fmtRate = bps => { const m = bps / 1e6; return m >= 1 ? m.toFixed(1) + ' MB/s' : bps >= 1000 ? Math.round(bps / 1000) + ' KB/s' : ''; };
 const fmtBytes = b => { b = +b || 0; if (b >= 1e12) return (b / 1e12).toFixed(2) + ' TB'; if (b >= 1e9) return (b / 1e9).toFixed(1) + ' GB'; if (b >= 1e6) return Math.round(b / 1e6) + ' MB'; return Math.round(b / 1e3) + ' KB'; };
 const fmtUp = s => { s = Math.floor(+s || 0); const d = Math.floor(s / 86400), h = Math.floor(s % 86400 / 3600), m = Math.floor(s % 3600 / 60); return d ? `${d}d ${h}h` : h ? `${h}h ${m}m` : `${m}m`; };
@@ -127,10 +128,15 @@ function setNet(state, text) {
 function setMode() {
   const p = $('#modePill');
   if (!LIVE) return;
-  p.innerHTML = `<span class="dot" style="background:${online ? 'var(--ok)' : 'var(--off)'}"></span>${online ? 'BE6500 Pro' : 'לא בבית'}`;
-  $('#modeNote').innerHTML = 'מחובר לנתב בבית. תכונות שמסומנות "בשלב הבא" עוד לא נשלחות לנתב.';
+  p.innerHTML = `<span class="dot" style="background:${online ? 'var(--ok)' : 'var(--off)'}"></span>${online ? 'BE6500 Pro · חי' : 'לא בבית'}`;
+  $('#modeNote').innerHTML = 'נתונים מהנתב בלבד. שינויים לא מאומתים ב־Wi-Fi, QoS ותזמונים אינם פעילים כאן.';
 }
-if (LIVE) document.querySelectorAll('[data-demo]').forEach(e => e.hidden = true);
+if (LIVE) {
+  document.querySelectorAll('[data-demo]').forEach(e=>e.hidden=true);
+  ['#pauseAll','#addSch','#profiles','#wMlo','#gDurBtn','#txBtn','#chOpt','#wMain','#wGuest','nav.tabs [data-go="schSec"]'].forEach(sel=>{
+    const el=$(sel);if(el){el.hidden=true;el.setAttribute('aria-hidden','true')}
+  });
+}
 
 /* ---------- live traffic ---------- */
 const N = 40;
@@ -161,22 +167,22 @@ const PROF = [['norm', 'רגיל', 'מאוזן לכולם', '<path d="M4 10a12 1
 function renderProf() {
   $('#profiles').innerHTML = PROF.map(p => `<button class="prof" data-p="${p[0]}" aria-pressed="${profile === p[0]}">${svg(p[3])}${p[1]}<small>${p[2]}</small></button>`).join('');
   document.querySelectorAll('.prof').forEach(b => b.onclick = () => {
-    if (LIVE) { soon(); return; }
+    if (LIVE) { return; }
     profile = b.dataset.p; store.set('profile', profile); renderProf(); toast('מצב "' + PROF.find(x => x[0] === profile)[1] + '" הופעל');
   });
 }
 renderProf();
 
 /* ---------- devices ---------- */
-const FIL = [['all', 'הכל'], ['on', 'מחוברים'], ['wifi', 'Wi-Fi'], ['lan', 'כבל'], ['blk', 'חסומים']];
+const FIL = [['all', 'הכל'], ['on', 'מחוברים'], ['wifi', 'Wi-Fi'], ['iot', 'IoT'], ['lan', 'כבל'], ['blk', 'חסומים']];
 function renderDevs() {
   $('#filters').innerHTML = FIL.map(f => `<button class="chip" data-f="${f[0]}" aria-pressed="${filter === f[0]}">${f[1]}</button>`).join('');
   document.querySelectorAll('#filters .chip').forEach(b => b.onclick = () => { filter = b.dataset.f; renderDevs(); });
-  const list = devs.filter(d => filter === 'all' || (filter === 'on' && d.online && !d.blocked) || (filter === 'blk' && d.blocked) || (filter === 'wifi' && d.band !== 'cable') || (filter === 'lan' && d.band === 'cable'))
+  const list = devs.filter(d => filter === 'all' || (filter === 'on' && d.online && !d.blocked) || (filter === 'blk' && d.blocked) || (filter === 'wifi' && ['2.4','5','guest','iot'].includes(d.band)) || (filter === 'iot' && d.band === 'iot') || (filter === 'lan' && d.band === 'cable'))
     .sort((a, b) => (b.online - a.online) || (b.r - a.r));
   $('#devs').innerHTML = list.length ? list.map(d => {
     const p = prefs[d.mac] || {}; const t = d.t || guessType(d.n, d.band);
-    return `<button class="row ${d.blocked || !d.online ? 'blk' : ''}" data-mac="${esc(d.mac)}"><div class="ic ${d.blocked ? 'bad' : ''}">${svg(IC[t])}</div><div class="t"><b>${esc(devName(d))}</b><small>${d.blocked ? '<span class="tag bad">חסום</span>' : d.online ? bandText(d.band) : 'לא מחובר'}${p.prio ? '<span class="tag acc">עדיפות</span>' : ''}${p.lim ? `<span class="tag hot">${p.lim} Mbps</span>` : ''}${d.isNew ? '<span class="tag hot">חדש</span>' : ''}</small></div><span class="v">${d.online && !d.blocked ? fmtRate(d.r) : ''}</span>${CHEV}</button>`;
+    return `<button class="row ${d.blocked || !d.online ? 'blk' : ''}" data-mac="${esc(d.mac)}"><div class="ic ${d.blocked ? 'bad' : ''}">${svg(IC[t])}</div><div class="t"><b>${esc(devName(d))}</b><small>${d.blocked ? '<span class="tag bad">חסום</span>' : d.online ? bandText(d.band) : 'לא מחובר'}${!LIVE&&p.prio ? '<span class="tag acc">עדיפות</span>' : ''}${!LIVE&&p.lim ? `<span class="tag hot">${p.lim} Mbps</span>` : ''}${d.isNew ? '<span class="tag hot">חדש</span>' : ''}</small></div><span class="v">${d.online && !d.blocked ? fmtRate(d.r) : ''}</span>${CHEV}</button>`;
   }).join('') : `<div class="row" style="color:var(--muted)">${LIVE && !devs.length ? 'טוען מכשירים...' : 'אין מכשירים בסינון הזה'}</div>`;
   document.querySelectorAll('#devs .row[data-mac]').forEach(r => r.onclick = () => devSheet(r.dataset.mac));
   const on = devs.filter(d => d.online).length; $('#devTitle').textContent = `מכשירים · ${on} מחוברים`; $('#cnt').textContent = on;
@@ -212,10 +218,10 @@ function devSheet(mac) {
   <div class="field"><label for="dn">שם</label><input type="text" id="dn" value="${esc(devName(d))}"></div>
   <div class="group">
    <div class="row"><div class="t"><b>גישה לאינטרנט</b></div><button class="sw" role="switch" id="dOn" aria-checked="${!d.blocked}" aria-label="גישה"></button></div>
-   <div class="row"><div class="t"><b>עדיפות במהירות</b><small>QoS - קודם לכל השאר${LIVE ? ' · בשלב הבא' : ''}</small></div><button class="sw" role="switch" id="dPr" aria-checked="${p.prio}" aria-label="עדיפות"></button></div>
+    ${LIVE?'':`<div class="row"><div class="t"><b>עדיפות במהירות</b><small>QoS - קודם לכל השאר${LIVE ? ' · בשלב הבא' : ''}</small></div><button class="sw" role="switch" id="dPr" aria-checked="${p.prio}" aria-label="עדיפות"></button></div>`}
   </div>
-  <div class="lbl">הגבלת מהירות${LIVE ? ' · בשלב הבא' : ''}</div>
-  ${segHtml('dLim', [[0, 'ללא'], [10, '10'], [50, '50'], [100, '100 Mbps']], p.lim)}
+  ${LIVE?'':`<div class="lbl">הגבלת מהירות (הדגמה)</div>`}
+  ${LIVE?'':segHtml('dLim', [[0, 'ללא'],[10,'10'],[50,'50'],[100,'100 Mbps']],p.lim)}
   <div class="group">
    <div class="kv"><span>כתובת IP</span><span>${esc(d.ip || '-')}</span></div>
    <div class="kv"><span>MAC</span><span>${esc(d.mac)}</span></div>
@@ -227,14 +233,14 @@ function devSheet(mac) {
   <div class="btns"><button class="btn" id="dCancel">ביטול</button><button class="btn pri" id="dSave">שמור</button></div>`,
     r => {
       sw(r.querySelector('#dOn'), v => st.blocked = !v);
-      sw(r.querySelector('#dPr'), v => st.prio = v);
+      if(!LIVE)sw(r.querySelector('#dPr'), v => st.prio = v);
       bindSeg(r, 'dLim', v => st.lim = +v);
       r.querySelector('#dCancel').onclick = closeSheet;
       r.querySelector('#dSave').onclick = async () => {
         const nm = r.querySelector('#dn').value.trim();
         if (nm && nm !== d.n) nicks[mac] = nm; else delete nicks[mac];
         store.set('nicks', nicks);
-        prefs[mac] = { prio: st.prio, lim: st.lim }; store.set('prefs', prefs);
+        if(!LIVE){prefs[mac] = { prio: st.prio, lim: st.lim }; store.set('prefs', prefs);}
         if (st.blocked !== d.blocked) {
           const ok = await setBlocked(d, st.blocked);
           if (ok) toast(st.blocked ? devName(d) + ' נחסם' : 'הגישה של ' + devName(d) + ' חזרה');
@@ -292,8 +298,8 @@ $('#speedBtn').onclick = () => {
       if (LIVE) {
         try {
           g.style.width = '8%'; const pg = await native('speed', { phase: 'ping' }); r.querySelector('#r3').textContent = Math.round(pg.ms); $('#ping').textContent = Math.round(pg.ms);
-          P.textContent = 'מודד הורדה...'; g.style.width = '20%'; let fake = setInterval(() => v.textContent = Math.round(Math.random() * 50 + (+v.textContent || 0) * 0.98), 200);
-          const dn = await native('speed', { phase: 'down' }); clearInterval(fake); v.textContent = Math.round(dn.mbps); r.querySelector('#r1').textContent = Math.round(dn.mbps);
+          P.textContent = 'מודד הורדה...'; g.style.width = '20%'; v.textContent = '…';
+          const dn = await native('speed', { phase: 'down' }); v.textContent = Math.round(dn.mbps); r.querySelector('#r1').textContent = Math.round(dn.mbps);
           P.textContent = 'מודד העלאה...'; g.style.width = '60%';
           const up = await native('speed', { phase: 'up' }); v.textContent = Math.round(up.mbps); r.querySelector('#r2').textContent = Math.round(up.mbps);
           g.style.width = '100%'; P.textContent = 'הבדיקה הסתיימה. זו המהירות שמגיעה לטלפון, לא לכבל של הנתב.'; v.textContent = Math.round(dn.mbps);
@@ -341,9 +347,9 @@ $('#wMain').addEventListener('click', e => {
     r => { r.querySelector('#wNo').onclick = closeSheet; r.querySelector('#wYes').onclick = async () => { closeSheet(); if (LIVE) { soon(); return; } wifi.on = false; renderWifi(); toast('הרשת הראשית כובתה'); }; });
 }, true);
 sw($('#wMlo'), (v, el) => { if (LIVE) { el.setAttribute('aria-checked', !v); soon(); return; } toast(v ? 'MLO הופעל' : 'MLO כובה'); });
-function setGuest(v) { $('#wGuest').setAttribute('aria-checked', v); $('#guestBtn').setAttribute('aria-pressed', v); $('#gSub').textContent = v ? (gDur ? `פעילה · נכבית בעוד ${gDur} שעות` : 'פעילה · ללא הגבלה') : 'כבויה'; }
+function setGuest(v) { $('#wGuest').setAttribute('aria-checked', v); $('#guestBtn').setAttribute('aria-pressed', v); $('#gSub').textContent = LIVE?(guestKnown?(v?'פעילה לפי הנתב':'כבויה לפי הנתב'):'סטטוס לא ידוע'):(v?(gDur?`פעילה · נכבית בעוד ${gDur} שעות`:'פעילה · ללא הגבלה'):'כבויה'); }
 sw($('#wGuest'), (v, el) => { if (LIVE) { el.setAttribute('aria-checked', !v); soon(); return; } setGuest(v); toast(v ? 'רשת האורחים הופעלה' : 'רשת האורחים כובתה'); });
-$('#guestBtn').onclick = () => { if (LIVE) { soon(); return; } const v = $('#guestBtn').getAttribute('aria-pressed') !== 'true'; setGuest(v); toast(v ? 'רשת האורחים הופעלה' : 'רשת האורחים כובתה'); };
+$('#guestBtn').onclick = () => { if (LIVE) { toast('מצב הרשת מוצג למטה. לשינוי פתח את ממשק Xiaomi.');$('#wGuest').scrollIntoView({behavior:'smooth',block:'center'});return; } const v = $('#guestBtn').getAttribute('aria-pressed') !== 'true'; setGuest(v); toast(v ? 'רשת האורחים הופעלה' : 'רשת האורחים כובתה'); };
 $('#pwShow').onclick = e => { shown = !shown; renderWifi(); e.target.textContent = shown ? 'הסתר' : 'הצג'; };
 $('#pwCopy').onclick = () => copy(wifi.pw);
 function qrSvg(text) {
@@ -365,7 +371,19 @@ $('#txBtn').onclick = () => optSheet('עוצמת שידור', [['max', 'חזקה
 $('#gDurBtn').onclick = () => optSheet('כיבוי אוטומטי לרשת אורחים', [[1, 'אחרי שעה'], [4, 'אחרי 4 שעות'], [24, 'אחרי יום'], [0, 'ללא הגבלה']], gDur, v => { if (LIVE) { soon(); return; } gDur = +v; $('#gDurV').textContent = gDur ? (gDur === 1 ? 'אחרי שעה' : gDur === 24 ? 'אחרי יום' : 'אחרי 4 שעות') : 'ללא הגבלה'; setGuest($('#wGuest').getAttribute('aria-checked') === 'true'); });
 $('#chOpt').onclick = e => { if (LIVE) { soon(); return; } e.target.textContent = 'סורק...'; setTimeout(() => { e.target.textContent = 'אופטימיזציה'; $('#chV').textContent = '2.4: 11 · 5: 149 · 160MHz'; toast('נבחרו ערוצים פנויים יותר'); }, 1800); };
 $('#meshAdd').onclick = () => toast('הנח נתב Xiaomi נוסף ליד הנתב ולחץ על כפתור Mesh');
-$('#fwBtn').onclick = e => { if (LIVE) { soon(); return; } e.target.textContent = 'בודק...'; setTimeout(() => { e.target.textContent = 'בדוק'; toast('הקושחה עדכנית'); }, 1500); };
+$('#fwBtn').onclick = async e => {
+  const b=e.currentTarget;b.disabled=true;b.textContent='בודק...';
+  try {
+    if(!LIVE){toast('נתוני הדגמה בלבד');return}
+    const x=await api('xqsystem/check_rom_update');
+    const ver=x.version||x.romversion||x.new_version||x.newVersion||'';
+    const isNew=[x.new,x.has_new,x.hasUpdate,x.isNew].some(v=>v===true||v===1||v==='1');
+    const result=isNew?'הראוטר מדווח על עדכון זמין'+(ver?' לגרסה '+ver:''):
+        ver?'גרסת הקושחה בדיווח: '+ver:'התקבלה תשובה, ללא מידע חד־משמעי על עדכון';
+    $('#fwV').textContent=result;toast(result);
+  }catch(ex){toast('בדיקת עדכון נכשלה: '+errText(ex))}
+  finally{b.disabled=false;b.textContent='בדוק'}
+};
 
 /* ---------- router details sheet ---------- */
 function netSheet() {
@@ -381,12 +399,40 @@ function netSheet() {
    <div class="kv"><span>כתובת הנתב</span><span>192.168.31.1</span></div>
    <div class="kv"><span>זמן פעולה</span><span>${s.upTime ? fmtUp(s.upTime) : (LIVE ? '-' : '6d 14h')}</span></div>
    <div class="kv"><span>קושחה</span><span>${esc(hw.version || (LIVE ? '-' : '1.0.42'))}</span></div></div>
-   ${LIVE ? '<div class="btns"><button class="btn" id="nDiag">בדיקת חיבור</button><button class="btn del" id="nOut">התנתק</button></div>' : '<p>נתוני הדגמה. באפליקציה יוצגו פרטי הנתב שלך.</p>'}
+   ${LIVE ? '<div class="btns"><button class="btn" id="nDiag">אבחון</button><button class="btn" id="nWan">WAN / 2.5G</button><button class="btn del" id="nOut">התנתק</button></div>' : '<p>נתוני הדגמה. באפליקציה יוצגו פרטי הנתב שלך.</p>'}
    <button class="btn" id="nClose">סגור</button>`, r => {
     r.querySelector('#nClose').onclick = closeSheet;
     const o = r.querySelector('#nOut'); if (o) o.onclick = async () => { await native('logout'); closeSheet(); loginSheet(); };
     const dg = r.querySelector('#nDiag'); if (dg) dg.onclick = diagSheet;
+     const wa=r.querySelector('#nWan');if(wa)wa.onclick=liveWanSheet;
   });
+}
+/* BE6500 Pro / RD08: only read values that the firmware actually exposes. */
+async function liveWanSheet(){
+  openSheet('<h3>חיבורי WAN ו־2.5GbE</h3><p>נתונים לקריאה בלבד. אין שינוי בהגדרות הרשת.</p><div class="group" id="wanLive"><div class="kv">טוען...</div></div><button class="btn" id="wanClose">סגור</button>',r=>{
+    r.querySelector('#wanClose').onclick=closeSheet;
+  });
+  const rows=[];
+  const show=(k,v)=>rows.push('<div class="kv"><span>'+esc(k)+'</span><span>'+esc(v==null||v===''?'לא דווח':String(v))+'</span></div>');
+  try{
+    const w=await api('xqnetwork/wan_info'),x=w.info||w.wan||w;
+    show('WAN ראשי',x.wan_name||x.name||'WAN');
+    show('IP',x.ip||x.address||x.wanIp||'-');
+    show('סוג',x.proto||x.type||'-');
+    const speed=x.link_speed??x.port_speed??x.speed;
+    show('מהירות חיבור פיזי',speed==null?'לא מסופקת על ידי הראוטר':speed);
+  }catch(e){show('WAN ראשי','אין מידע: '+errText(e))}
+  try{
+    const st=await api('misystem/get_ps_service',{service:'multiwan'});
+    const multi=[st.on,st.enable,st.enabled,st.status].some(v=>v===true||v===1||v==='1');
+    show('Dual WAN',multi?'פעיל':'לא פעיל או לא נתמך');
+    if(multi){
+      const r=await api('xqnetwork/wan_info',{wan_name:'WAN2'}),x=r.info||r.wan||r;
+      show('WAN2 IP',x.ip||x.address||'-');
+      show('WAN2 סוג',x.proto||x.type||'-');
+    }
+  }catch(e){show('WAN2','הראוטר לא סיפק מידע')}
+  const el=$('#wanLive');if(el)el.innerHTML=rows.join('');
 }
 $('#menu').onclick = netSheet;
 
@@ -440,7 +486,7 @@ async function loadStatus() {
   try {
     const s = await api('misystem/status'); failCount = 0;
     if (!online || rebooting) { online = true; rebooting = 0; setMode(); }
-    setNet('ok', 'מחובר לאינטרנט'); applyStatus(s);
+    setNet('ok', 'הראוטר נגיש ברשת'); applyStatus(s);
   } catch (e) {
     const m = String(e.message);
     if (m.includes('badPassword') || m.includes('noPassword')) { stop(); loginSheet(m.includes('badPassword') ? 'הסיסמה השמורה כבר לא נכונה' : ''); return; }
@@ -457,7 +503,7 @@ async function loadDevices() {
       const ipObj = (x.ip || [])[0] || {};
       const prev = old.find(o => o.mac === x.mac) || {};
       return {
-        mac: x.mac, n: x.name || x.oname || x.mac, band: BAND[x.type] || (x.type == null ? '' : 'cable'),
+        mac: x.mac, n: x.name || x.oname || x.mac, band: Object.prototype.hasOwnProperty.call(BAND,x.type) ? BAND[x.type] : '',
         ip: ipObj.ip, online: x.online == null ? true : !!+x.online, blocked: x.authority ? +x.authority.wan === 0 : false,
         r: prev.r || +ipObj.downspeed || 0, tot: prev.tot || 0, isNew: prev.isNew
       };
@@ -470,13 +516,13 @@ async function loadWifi() {
     const j = await api('xqnetwork/wifi_detail_all');
     const info = j.info || [];
     const a = info[0] || {}, b = info[1] || {};
-    wifi.ssid = a.ssid || b.ssid || wifi.ssid; wifi.pw = a.password || b.password || '';
+    wifi.ssid = a.ssid || b.ssid || 'לא דווח'; wifi.pw = a.password || b.password || '';
     const ch = x => x && x.channelInfo ? x.channelInfo.channel : (x && x.channel);
     const bw = b.channelInfo && b.channelInfo.bandwidth ? b.channelInfo.bandwidth + 'MHz' : '';
     wifi.ch = `2.4: ${ch(a) || 'auto'} · 5: ${ch(b) || 'auto'}${bw ? ' · ' + bw : ''}`;
     wifi.tx = a.txpwr || b.txpwr || wifi.tx; wifi.on = (a.status === '1' || a.status === 1 || b.status === '1' || b.status === 1);
-    const g = info.find(x => /guest/i.test(x.ifname || '') || x.guest); if (g) { wifi.guestSsid = g.ssid; setGuest(g.status === '1' || g.status === 1); }
-    $('#wSub').textContent = (a.ssid && b.ssid && a.ssid !== b.ssid) ? `5 GHz: ${b.ssid}` : '2.4 + 5 GHz · Wi-Fi 7';
+    const g = info.find(x => /guest/i.test(x.ifname || '') || x.guest);guestKnown=!!g;if(g){wifi.guestSsid=g.ssid||'רשת אורחים';setGuest(g.status === '1' || g.status === 1);}else setGuest(false);
+    $('#wSub').textContent = (a.ssid && b.ssid && a.ssid !== b.ssid) ? `5 GHz: ${b.ssid}` : 'רשת משולבת / שידור אלחוטי';
     renderWifi();
   } catch (e) {}
   try { lastNet = await api('xqnetwork/pppoe_status'); } catch (e) {}
