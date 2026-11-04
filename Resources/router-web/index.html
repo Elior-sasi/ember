@@ -2,7 +2,7 @@
 <html lang="he" dir="rtl"><head>
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width,initial-scale=1,maximum-scale=1,user-scalable=no,viewport-fit=cover">
-<title>Halo</title>
+<title>ראוטר · HomeOn</title>
 <style>
 @font-face{font-family:Rubik;font-weight:400;font-display:swap;src:url(fonts/rubik-latin-400-normal.woff2) format('woff2')}
 @font-face{font-family:Rubik;font-weight:500;font-display:swap;src:url(fonts/rubik-latin-500-normal.woff2) format('woff2')}
@@ -21,6 +21,29 @@ input{-webkit-user-select:text;user-select:text}
 .net.off{color:var(--muted)}
 .net.warn{color:var(--warn)}
 </style>
+<style id="homeon-theme">
+/* HomeOn look: same header, orange accent, glass pill tab bar with blue active tab */
+:root{--accent:#ff9a3d!important}
+body{background:#000!important}
+.top .brand .logo{display:none!important}
+.top .brand{font-size:30px;font-weight:800;letter-spacing:-.5px}
+.hoBack{flex:none;width:44px;height:44px;border-radius:50%;background:#2c2c2e;color:#fff;display:grid;place-items:center;border:0}
+.hoBack svg{width:22px;height:22px}
+nav.tabs{left:50%!important;right:auto!important;bottom:calc(12px + env(safe-area-inset-bottom,0px))!important;transform:translateX(-50%);width:calc(100% - 32px);max-width:560px;height:64px;padding:4px!important;border-radius:999px;
+ background:linear-gradient(160deg,rgba(58,52,46,.62),rgba(23,20,18,.8))!important;border:1px solid #ffd2a83d!important;box-shadow:inset 0 1px 1.5px #ffffff40,0 14px 34px #000a;-webkit-backdrop-filter:blur(24px) saturate(160%);backdrop-filter:blur(24px) saturate(160%)}
+nav.tabs button{flex:1;border-radius:999px;color:rgba(255,255,255,.85)!important;font-size:.72rem;font-weight:600;justify-content:center}
+nav.tabs button.on{color:#6fa8ff!important;background:linear-gradient(145deg,#ffb36b3d,#ff9a3d14 55%,#ffd2a826);box-shadow:inset 0 0 0 1px #ffc58a66}
+.app{padding-bottom:calc(110px + env(safe-area-inset-bottom,0px))!important}
+</style>
+<script>
+/* Inside HomeOn: title "ראוטר" with a back button, like every HomeOn screen */
+(function(){function go(){var b=document.querySelector('.top .brand');if(b){b.lastChild&&b.lastChild.nodeType===3?b.lastChild.textContent='ראוטר':b.append('ראוטר');
+  [...b.childNodes].forEach(function(n){if(n.nodeType===3&&n.textContent.trim()==='Halo')n.textContent=''})}
+  var h=document.querySelector('header.top');if(!h||document.querySelector('.hoBack'))return;var k=document.createElement('button');k.className='hoBack';k.setAttribute('aria-label','חזרה ל-HomeOn');
+  k.innerHTML='<svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.4" stroke-linecap="round" stroke-linejoin="round"><path d="m9 6 6 6-6 6"/></svg>';
+  k.onclick=function(){try{window.webkit.messageHandlers.emberClose.postMessage('close')}catch(e){history.back()}};var w=document.createElement('div');w.style.cssText='display:flex;align-items:center;gap:10px';h.insertBefore(w,h.firstChild);w.append(k,b)}
+ document.readyState==='loading'?addEventListener('DOMContentLoaded',go):go()})();
+</script>
 </head><body>
 <style>
 /* Layout: one phone column - status ring card on top, actions, devices, schedules, Wi-Fi, more; bottom tab bar. Dark is pure black with Breeze-like glow. */
@@ -272,18 +295,18 @@ nav.tabs svg{width:22px;height:22px}
     <button class="x" id="ndNo" aria-label="סגור">✕</button>
   </div>
 
-  <section class="sec">
+  <section class="sec" data-demo>
     <h2>מצב רשת</h2>
     <div class="profiles" id="profiles"></div>
   </section>
 
   <section class="sec" id="devSec">
-    <h2><span id="devTitle">מכשירים</span><button class="link" id="pauseAll">השהה הכל</button></h2>
+    <h2><span id="devTitle">מכשירים</span><button class="link" id="pauseAll" data-demo>השהה הכל</button></h2>
     <div class="chips" id="filters"></div>
     <div class="group" id="devs"></div>
   </section>
 
-  <section class="sec" id="schSec">
+  <section class="sec" id="schSec" data-demo>
     <h2>זמני גלישה<button class="link" id="addSch">+ הוסף</button></h2>
     <div class="group" id="schs"></div>
   </section>
@@ -294,18 +317,18 @@ nav.tabs svg{width:22px;height:22px}
       <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 10a12 12 0 0 1 16 0"/><path d="M7.5 13.5a7 7 0 0 1 9 0"/><circle cx="12" cy="17.5" r="1" fill="currentColor"/></svg></div><div class="t"><b id="ssid">Elior_Home</b><small id="wSub">2.4 + 5 GHz · Wi-Fi 7</small></div><button class="sw" role="switch" aria-checked="true" id="wMain" aria-label="רשת ראשית"></button></div>
       <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V8a4 4 0 0 1 8 0v3"/></svg></div><div class="t"><b>סיסמה</b><small id="pw" style="direction:ltr;justify-content:flex-end">••••••••••</small></div><button class="mini-btn" id="pwShow">הצג</button><button class="mini-btn" id="pwCopy">העתק</button></div>
       <button class="row" id="qrBtn"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="4" y="4" width="6" height="6" rx="1"/><rect x="14" y="4" width="6" height="6" rx="1"/><rect x="4" y="14" width="6" height="6" rx="1"/><path d="M14 14h2v2h-2zM18 18h2v2h-2zM14 18h2M18 14h2"/></svg></div><div class="t"><b>שיתוף ב-QR</b><small>אורח סורק ומתחבר</small></div><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 6l-6 6 6 6"/></svg></button>
-      <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h4l2-5 4 10 2-5h4"/></svg></div><div class="t"><b>Wi-Fi 7 MLO</b><small>חיבור כפול 2.4+5 למכשירים תומכים</small></div><button class="sw" role="switch" aria-checked="true" id="wMlo" aria-label="MLO"></button></div>
-      <button class="row" id="txBtn"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20V10"/><path d="M8 14a5 5 0 0 1 8 0"/><path d="M5 11a9 9 0 0 1 14 0"/></svg></div><div class="t"><b>עוצמת שידור</b></div><span class="v" id="txV">חזקה</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 6l-6 6 6 6"/></svg></button>
-      <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 18h18"/><path d="M6 18V9M10 18V5M14 18v-7M18 18v-4"/></svg></div><div class="t"><b>ערוצים</b><small id="chV">2.4: 6 · 5: 36 · 160MHz</small></div><button class="mini-btn" id="chOpt">אופטימיזציה</button></div>
+      <div class="row" data-demo><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M4 12h4l2-5 4 10 2-5h4"/></svg></div><div class="t"><b>Wi-Fi 7 MLO</b><small>חיבור כפול 2.4+5 למכשירים תומכים</small></div><button class="sw" role="switch" aria-checked="true" id="wMlo" aria-label="MLO"></button></div>
+      <button class="row" id="txBtn" data-demo><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 20V10"/><path d="M8 14a5 5 0 0 1 8 0"/><path d="M5 11a9 9 0 0 1 14 0"/></svg></div><div class="t"><b>עוצמת שידור</b></div><span class="v" id="txV">חזקה</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M3 18h18"/><path d="M6 18V9M10 18V5M14 18v-7M18 18v-4"/></svg></div><div class="t"><b>ערוצים</b><small id="chV">2.4: 6 · 5: 36 · 160MHz</small></div><button class="mini-btn" id="chOpt" data-demo>אופטימיזציה</button></div>
     </div>
   </section>
 
   <section class="sec">
     <h2>רשת אורחים</h2>
     <div class="group">
-      <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M18 9v6M15 12h6"/></svg></div><div class="t"><b id="gName">Elior_Guest</b><small id="gSub">כבויה</small></div><button class="sw" role="switch" aria-checked="false" id="wGuest" aria-label="רשת אורחים"></button></div>
-      <button class="row" id="gDurBtn"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg></div><div class="t"><b>כיבוי אוטומטי</b></div><span class="v" id="gDurV">אחרי 4 שעות</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 6l-6 6 6 6"/></svg></button>
-      <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg></div><div class="t"><b>בידוד מהרשת הביתית</b><small>אורחים לא רואים את המכשירים שלך</small></div><button class="sw" role="switch" aria-checked="true" aria-label="בידוד"></button></div>
+      <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="9" cy="8" r="3.2"/><path d="M3 20a6 6 0 0 1 12 0"/><path d="M18 9v6M15 12h6"/></svg></div><div class="t"><b id="gName">Elior_Guest</b><small id="gSub">כבויה</small></div><button class="sw" role="switch" aria-checked="false" id="wGuest" aria-label="מצב רשת אורחים (קריאה בלבד)"></button></div>
+      <button class="row" id="gDurBtn" data-demo><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="13" r="8"/><path d="M12 9v4l2.5 2M9 2h6"/></svg></div><div class="t"><b>כיבוי אוטומטי</b></div><span class="v" id="gDurV">אחרי 4 שעות</span><svg class="chev" viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2.5"><path d="M15 6l-6 6 6 6"/></svg></button>
+      <div class="row" data-demo><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="3" y="4" width="18" height="16" rx="2"/><path d="M3 10h18"/></svg></div><div class="t"><b>בידוד מהרשת הביתית</b><small>אורחים לא רואים את המכשירים שלך</small></div><button class="sw" role="switch" aria-checked="true" aria-label="בידוד"></button></div>
     </div>
   </section>
 
@@ -335,14 +358,14 @@ nav.tabs svg{width:22px;height:22px}
         <div class="port"><i></i><b>-</b><small>פנוי</small></div>
       </div>
 
-      <div class="sec-lbl">בית חכם ו-Mesh</div>
-      <div class="group">
+      <div class="sec-lbl" data-demo>בית חכם ו-Mesh</div>
+      <div class="group" data-demo>
         <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M7 7l10 10-5 5V2l5 5L7 17"/></svg></div><div class="t"><b>מרכז Bluetooth Mesh</b><small>3 מכשירים · בקרה מקומית</small></div><button class="sw" role="switch" aria-checked="true" aria-label="Bluetooth"></button></div>
         <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="5" r="2.5"/><circle cx="5" cy="18" r="2.5"/><circle cx="19" cy="18" r="2.5"/><path d="M10.7 7.2L6.3 15.8M13.3 7.2l4.4 8.6M7.5 18h9"/></svg></div><div class="t"><b>יחידות Mesh</b><small>אין יחידות נוספות</small></div><button class="mini-btn" id="meshAdd">הוסף</button></div>
       </div>
 
-      <div class="sec-lbl">אבטחה ורשת</div>
-      <div class="group">
+      <div class="sec-lbl" data-demo>אבטחה ורשת</div>
+      <div class="group" data-demo>
         <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><path d="M12 3l8 3v6c0 4.5-3.4 8-8 9-4.6-1-8-4.5-8-9V6z"/></svg></div><div class="t"><b>חסימת פרסומות ואתרים מזיקים</b><small>DNS מסנן לכל הרשת</small></div><button class="sw" role="switch" aria-checked="false" aria-label="חסימת פרסומות"></button></div>
         <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3a14 14 0 0 1 0 18M12 3a14 14 0 0 0 0 18"/></svg></div><div class="t"><b>DNS</b></div><span class="v">1.1.1.1</span></div>
         <div class="row"><div class="ic"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round"><rect x="5" y="11" width="14" height="9" rx="2"/><path d="M8 11V7a4 4 0 0 1 8 0"/></svg></div><div class="t"><b>שרת VPN ביתי</b><small>גישה לרשת הבית מבחוץ</small></div><button class="sw" role="switch" aria-checked="false" aria-label="VPN"></button></div>
