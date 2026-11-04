@@ -231,6 +231,27 @@ struct HomeOnWebView: UIViewRepresentable {
             case "heaterSetup":
                 model.showHeaterSetup = true
                 return #"{"ok":true}"#
+            case "routerClients":
+                // Read-only local discovery for devices such as MOVA E30 Ultra.
+                // Return only client names, MACs, IPs and online flags, never router secrets.
+                let raw = try await RouterClient.shared.call(path: "misystem/devicelist", params: [:], method: "GET")
+                guard let data = raw.data(using: .utf8),
+                      let payload = try? JSONSerialization.jsonObject(with: data) as? [String: Any],
+                      (payload["code"] as? Int ?? 0) == 0 else {
+                    throw RouterError.bad("רשימת המכשירים בראוטר אינה זמינה")
+                }
+                let list = payload["list"] as? [[String: Any]] ?? []
+                let clients: [[String: Any]] = list.compactMap { item in
+                    guard let mac = item["mac"] as? String, !mac.isEmpty else { return nil }
+                    let ips = item["ip"] as? [[String: Any]] ?? []
+                    let ip = ips.first?["ip"] as? String ?? ""
+                    let name = item["name"] as? String ?? item["oname"] as? String ?? mac
+                    let online = (item["online"] as? Int).map { $0 != 0 }
+                        ?? (item["online"] as? Bool) ?? true
+                    return ["mac": mac.uppercased(), "name": name, "ip": ip, "online": online]
+                }
+                let response = try JSONSerialization.data(withJSONObject: ["ok": true, "clients": clients])
+                return String(data: response, encoding: .utf8) ?? #"{"ok":false}"#
             case "openRouter":
                 model.showRouter = true
                 return #"{"ok":true}"#
