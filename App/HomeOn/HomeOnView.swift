@@ -104,24 +104,16 @@ struct SplashView: View {
                     Circle().fill(RadialGradient(colors: [orange.opacity(0.26), .clear], center: .center, startRadius: 0, endRadius: 85))
                         .frame(width: 180, height: 180).offset(x: 26, y: 20)
                         .opacity(tile2 ? 1 : 0)
-                    Image("LaunchLogo").resizable().frame(width: 120, height: 120)
-                        .scaleEffect(x: 1, y: roof ? 1 : 0.97, anchor: .bottom)
-                    GeometryReader { g in
-                        let k = g.size.width / 512
-                        ZStack(alignment: .topLeading) {
-                            RoundedRectangle(cornerRadius: 16 * k).fill(blue)
-                                .frame(width: 80 * k, height: 64 * k).offset(x: 166 * k, y: 264 * k)
-                                .opacity(tile1 ? 1 : 0).shadow(color: blue.opacity(0.8), radius: tile1 ? 6 : 0)
-                            RoundedRectangle(cornerRadius: 16 * k).fill(orange)
-                                .frame(width: 80 * k, height: 62 * k).offset(x: 266 * k, y: 342 * k)
-                                .opacity(tile2 ? 1 : 0).shadow(color: orange.opacity(0.8), radius: tile2 ? 6 : 0)
-                            Wave(r: 58 * k, cx: 368 * k, cy: 162 * k).stroke(LinearGradient(colors: [gold, orange], startPoint: .top, endPoint: .bottom), style: StrokeStyle(lineWidth: 26 * k, lineCap: .round))
-                                .opacity(wave1 ? (pulse ? 0.55 : 1) : 0)
-                            Wave(r: 112 * k, cx: 368 * k, cy: 162 * k).stroke(LinearGradient(colors: [gold, orange], startPoint: .top, endPoint: .bottom), style: StrokeStyle(lineWidth: 26 * k, lineCap: .round))
-                                .opacity(wave2 ? (pulse ? 1 : 0.55) : 0)
-                        }
-                    }
-                    .frame(width: 120, height: 120)
+                    // Animate the exact launch asset; don't redraw colored fragments
+                    // over it, since those shapes can jump or misalign at handoff.
+                    Image("LaunchLogo")
+                        .resizable()
+                        .interpolation(.high)
+                        .frame(width: 120, height: 120)
+                        .scaleEffect(roof ? 1 : 0.985)
+                        .opacity(roof ? 1 : 0.82)
+                        .shadow(color: orange.opacity(tile2 ? 0.28 : 0), radius: 18)
+
                 }
                 // the logo is a picture, not text: never mirror it for Hebrew
                 .environment(\.layoutDirection, .leftToRight)
@@ -150,8 +142,8 @@ struct SplashView: View {
             return
         }
         // starts a moment after launch, so the system launch screen has gone and the whole show is seen
-        let t0 = 0.3
-        withAnimation(.spring(response: 0.45, dampingFraction: 0.45).delay(t0)) { roof = true }
+        let t0 = 0.08
+        withAnimation(.easeInOut(duration: 0.65).delay(t0)) { roof = true }
         withAnimation(.easeOut(duration: 0.35).delay(t0 + 0.35)) { tile1 = true }
         withAnimation(.easeOut(duration: 0.35).delay(t0 + 0.65)) { tile2 = true }
         withAnimation(.easeOut(duration: 0.3).delay(t0 + 0.95)) { wave1 = true }
