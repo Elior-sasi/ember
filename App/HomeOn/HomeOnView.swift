@@ -113,6 +113,23 @@ struct SplashView: View {
                         .scaleEffect(roof ? 1 : 0.985)
                         .opacity(roof ? 1 : 0.82)
                         .shadow(color: orange.opacity(tile2 ? 0.28 : 0), radius: 18)
+                    // Illuminate the existing four window panes without moving the house.
+                    // Coordinates are tied to the 120pt LaunchLogo (360px source).
+                    ZStack {
+                        RoundedRectangle(cornerRadius: 4).fill(blue)
+                            .frame(width: 19, height: 15).offset(x: -12, y: 5)
+                            .opacity(tile1 ? 1 : 0)
+                        RoundedRectangle(cornerRadius: 4).fill(orange)
+                            .frame(width: 19, height: 15).offset(x: 12, y: 5)
+                            .opacity(tile2 ? 1 : 0)
+                        RoundedRectangle(cornerRadius: 4).fill(gold)
+                            .frame(width: 19, height: 15).offset(x: -12, y: 23)
+                            .opacity(wave1 ? 1 : 0)
+                        RoundedRectangle(cornerRadius: 4).fill(blue)
+                            .frame(width: 19, height: 15).offset(x: 12, y: 23)
+                            .opacity(wave2 ? 1 : 0)
+                    }
+                    .allowsHitTesting(false)
 
                 }
                 // the logo is a picture, not text: never mirror it for Hebrew
