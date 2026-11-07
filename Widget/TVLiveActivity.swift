@@ -9,7 +9,7 @@ struct TVLiveActivity: Widget {
         ActivityConfiguration(for: TVActivityAttributes.self) { ctx in
             VStack(alignment: .leading, spacing: 10) {
                 HStack {
-                    Image(systemName: "tv").foregroundStyle(.orange)
+                    Image(systemName: "tv").foregroundStyle(Theme.home)
                     Text(ctx.attributes.name).font(.headline)
                     Spacer()
                     if !ctx.state.app.isEmpty { Text(ctx.state.app).font(.caption).foregroundStyle(.secondary) }
@@ -27,7 +27,7 @@ struct TVLiveActivity: Widget {
             .environment(\.layoutDirection, .rightToLeft)
         } dynamicIsland: { ctx in
             DynamicIsland {
-                DynamicIslandExpandedRegion(.leading) { Image(systemName: "tv").foregroundStyle(.orange).padding(.leading, 6) }
+                DynamicIslandExpandedRegion(.leading) { Image(systemName: "tv").foregroundStyle(Theme.home).padding(.leading, 6) }
                 DynamicIslandExpandedRegion(.trailing) { Text(ctx.attributes.name).font(.caption).lineLimit(1) }
                 DynamicIslandExpandedRegion(.bottom) {
                     HStack(spacing: 10) {
@@ -38,11 +38,11 @@ struct TVLiveActivity: Widget {
                     }
                 }
             } compactLeading: {
-                Image(systemName: "tv").foregroundStyle(.orange)
+                Image(systemName: "tv").foregroundStyle(Theme.home)
             } compactTrailing: {
                 Image(systemName: "playpause.fill")
             } minimal: {
-                Image(systemName: "tv").foregroundStyle(.orange)
+                Image(systemName: "tv").foregroundStyle(Theme.home)
             }
         }
     }

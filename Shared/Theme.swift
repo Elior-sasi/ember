@@ -20,6 +20,8 @@ enum Theme {
     static let track = Color(lightRGBA: (0, 0, 0, 0.08), darkRGBA: (255, 255, 255, 0.1))
 
     static let accent = Color(hex: 0xff9a4d)
+    /// HomeOn's own accent (blue). The water heater keeps the warm orange above.
+    static let home = Color(hex: 0x3d8bff)
     static let accent2 = Color(hex: 0xff6a3d)
     /// accent for text and icons - darker in light mode so it stays readable
     static let accentInk = Color(light: 0xb9500f, dark: 0xff9a4d)
