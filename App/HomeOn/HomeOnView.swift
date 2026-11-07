@@ -238,8 +238,10 @@ struct HomeOnWebView: UIViewRepresentable {
                     let ips = item["ip"] as? [[String: Any]] ?? []
                     let ip = ips.first?["ip"] as? String ?? ""
                     let name = item["name"] as? String ?? item["oname"] as? String ?? mac
-                    let online = (item["online"] as? Int).map { $0 != 0 }
-                        ?? (item["online"] as? Bool) ?? true
+                    // The firmware sends 1/0, "1"/"0" or true/false depending on version.
+                    let o = item["online"]
+                    let online = (o as? Bool) ?? (o as? Int).map { $0 != 0 }
+                        ?? (o as? String).map { $0 != "0" && $0.lowercased() != "false" } ?? true
                     return ["mac": mac.uppercased(), "name": name, "ip": ip, "online": online]
                 }
                 let response = try JSONSerialization.data(withJSONObject: ["ok": true, "clients": clients])

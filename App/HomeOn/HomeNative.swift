@@ -52,13 +52,9 @@ final class HomeGeo: NSObject, CLLocationManagerDelegate {
             if s == .notDetermined { lm.requestWhenInUseAuthorization() } else { lm.requestAlwaysAuthorization() }
             DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in self?.waitAuth?.resume(); self?.waitAuth = nil }
         }
-        if always && lm.authorizationStatus == .authorizedWhenInUse {
-            await withCheckedContinuation { c in
-                waitAuth = c
-                lm.requestAlwaysAuthorization()
-                DispatchQueue.main.asyncAfter(deadline: .now() + 30) { [weak self] in self?.waitAuth?.resume(); self?.waitAuth = nil }
-            }
-        }
+        // iOS often grants "Always" provisionally without a callback (it asks later, at the first region event),
+        // so ask and move on instead of waiting up to 30 seconds for an answer that may not come now.
+        if always && lm.authorizationStatus == .authorizedWhenInUse { lm.requestAlwaysAuthorization() }
     }
 
     /// "I'm home now": remembers the current location as home.
@@ -69,6 +65,7 @@ final class HomeGeo: NSObject, CLLocationManagerDelegate {
         }
         lm.desiredAccuracy = kCLLocationAccuracyBest
         let loc: CLLocation = try await withCheckedThrowingContinuation { c in
+            waitLoc?.resume(throwing: HomeLink.Failure.server("בקשת מיקום חדשה"))
             waitLoc = c
             lm.requestLocation()
         }
