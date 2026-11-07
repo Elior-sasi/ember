@@ -60,7 +60,8 @@ struct PB {
             switch w {
             case 0: guard let v = rv() else { return out }; out[f, default: []].append(.int(v))
             case 2:
-                guard let l = rv(), i + Int(l) <= b.count else { return out }
+                // a broken length must not crash the app (Int(l) would trap on a huge value)
+                guard let l = rv(), l <= UInt64(b.count - i) else { return out }
                 out[f, default: []].append(.bytes(Data(b[i..<i + Int(l)]))); i += Int(l)
             case 1: i += 8
             case 5: i += 4
@@ -174,7 +175,8 @@ enum TVCert {
 final class TVLink {
     private let conn: NWConnection
     private var buf = Data()
-    private var waiters: [(Data) -> Void] = []
+    private var waiters: [(id: Int, f: (Data) -> Void)] = []
+    private var waiterSeq = 0
     private var inbox: [Data] = []
     var onMessage: ((Data) -> Void)?
     var onClose: (() -> Void)?
@@ -225,8 +227,14 @@ final class TVLink {
             q.async {
                 var done = false
                 if !self.inbox.isEmpty { c.resume(returning: self.inbox.removeFirst()); return }
-                self.waiters.append { d in if !done { done = true; c.resume(returning: d) } }
-                self.q.asyncAfter(deadline: .now() + timeout) { if !done { done = true; c.resume(throwing: TVError.timeout) } }
+                self.waiterSeq += 1
+                let id = self.waiterSeq
+                self.waiters.append((id, { d in if !done { done = true; c.resume(returning: d) } }))
+                self.q.asyncAfter(deadline: .now() + timeout) {
+                    // remove the timed-out waiter, or it would swallow the next message
+                    self.waiters.removeAll { $0.id == id }
+                    if !done { done = true; c.resume(throwing: TVError.timeout) }
+                }
             }
         }
     }
@@ -247,11 +255,12 @@ final class TVLink {
             var l = 0, s = 0, i = 0, ok = false
             let b = [UInt8](buf.prefix(10))
             while i < b.count { l |= Int(b[i] & 0x7f) << s; i += 1; if b[i - 1] < 0x80 { ok = true; break }; s += 7 }
+            if ok && (l < 0 || l > 1_000_000) { buf.removeAll(); return }   // garbage: drop it instead of overflowing
             guard ok, buf.count >= i + l else { return }
             let m = buf.subdata(in: buf.startIndex + i ..< buf.startIndex + i + l)
             buf.removeSubrange(buf.startIndex ..< buf.startIndex + i + l)
             if let f = onMessage { f(m) }
-            else if !waiters.isEmpty { waiters.removeFirst()(m) }
+            else if !waiters.isEmpty { waiters.removeFirst().f(m) }
             else { inbox.append(m) }
         }
     }
@@ -265,6 +274,7 @@ final class TVPairing {
     /// Step 1: connect and ask the TV to show its code.
     func start(host: String) async throws {
         let id = try TVCert.identity()
+        link?.close()   // a second try: drop the earlier pairing connection
         let l = TVLink(host: host, port: 6467, identity: id)
         link = l
         try await l.open()
