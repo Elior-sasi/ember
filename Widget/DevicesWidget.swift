@@ -36,7 +36,7 @@ struct DevicesWidgetView: View {
         Group {
             if !entry.linked || entry.devices.isEmpty {
                 VStack(spacing: 6) {
-                    Image(systemName: "house.fill").font(.title2).foregroundStyle(Theme.home)
+                    Image(systemName: "house.fill").font(.title2).foregroundStyle(Theme.accent)
                     Text(entry.linked ? "בחר מכשירים בהגדרות HomeOn" : "פתח את HomeOn פעם אחת")
                         .font(.footnote.weight(.semibold)).multilineTextAlignment(.center)
                 }
@@ -65,7 +65,7 @@ struct DevicesWidgetView: View {
                     .foregroundStyle(.white)
             }
             .frame(maxWidth: .infinity, minHeight: 58)
-            .background(on ? Theme.home.opacity(0.28) : Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
+            .background(on ? Theme.accent.opacity(0.28) : Color.white.opacity(0.07), in: RoundedRectangle(cornerRadius: 14))
         }
         .buttonStyle(.plain)
         .accessibilityLabel("\(d.name), \(d.online ? (on ? "דולק" : "כבוי") : "מנותק")")
@@ -90,14 +90,14 @@ struct WashLiveActivity: Widget {
         ActivityConfiguration(for: WashActivityAttributes.self) { ctx in
             HStack(spacing: 12) {
                 Image(systemName: ctx.state.done ? "checkmark.circle.fill" : "washer.fill")
-                    .font(.title).foregroundStyle(ctx.state.done ? .green : Theme.home)
+                    .font(.title).foregroundStyle(ctx.state.done ? .green : Theme.accent)
                     .accessibilityHidden(true)
                 VStack(alignment: .leading, spacing: 4) {
                     Text(ctx.attributes.name).font(.headline)
                     Text(ctx.state.done ? "סיימה, אפשר לפרוק" : ctx.state.phase).font(.subheadline).foregroundStyle(.secondary)
                     if !ctx.state.done {
                         ProgressView(timerInterval: ctx.state.start...ctx.state.end, countsDown: false) { EmptyView() } currentValueLabel: { EmptyView() }
-                            .tint(Theme.home)
+                            .tint(Theme.accent)
                     }
                 }
                 Spacer()
@@ -113,7 +113,7 @@ struct WashLiveActivity: Widget {
         } dynamicIsland: { ctx in
             DynamicIsland {
                 DynamicIslandExpandedRegion(.leading) {
-                    Image(systemName: "washer.fill").foregroundStyle(Theme.home).padding(.leading, 6)
+                    Image(systemName: "washer.fill").foregroundStyle(Theme.accent).padding(.leading, 6)
                 }
                 DynamicIslandExpandedRegion(.trailing) {
                     if ctx.state.done { Text("סיימה").font(.headline) }
@@ -123,12 +123,12 @@ struct WashLiveActivity: Widget {
                     Text("\(ctx.attributes.name) · \(ctx.state.done ? "אפשר לפרוק" : ctx.state.phase)").font(.caption)
                 }
             } compactLeading: {
-                Image(systemName: "washer.fill").foregroundStyle(Theme.home)
+                Image(systemName: "washer.fill").foregroundStyle(Theme.accent)
             } compactTrailing: {
                 if ctx.state.done { Image(systemName: "checkmark").foregroundStyle(.green) }
                 else { Text(timerInterval: ctx.state.start...ctx.state.end, countsDown: true).monospacedDigit().frame(maxWidth: 44) }
             } minimal: {
-                Image(systemName: "washer.fill").foregroundStyle(Theme.home)
+                Image(systemName: "washer.fill").foregroundStyle(Theme.accent)
             }
         }
     }

@@ -30,7 +30,7 @@ struct HomeOnRoot: View {
                     .environmentObject(model)
                     .environment(\.layoutDirection, .rightToLeft)
                     .environment(\.locale, Locale(identifier: "he_IL"))
-                    .tint(Theme.home)
+                    .tint(Theme.accent)
             }
             .sheet(isPresented: $model.showHeaterSetup, onDismiss: {
                 Task { await model.refresh(quiet: true) }
@@ -50,7 +50,7 @@ struct HomeOnRoot: View {
                 .environmentObject(model)
                 .environment(\.layoutDirection, .rightToLeft)
                 .environment(\.locale, Locale(identifier: "he_IL"))
-                .tint(Theme.home)
+                .tint(Theme.accent)
             }
             .fullScreenCover(isPresented: $model.showRouter) {
                 RouterScreen().environmentObject(model)
