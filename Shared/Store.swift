@@ -41,7 +41,29 @@ struct Snapshot: Codable, Equatable {
 
 final class Store {
     static let shared = Store()
-    static let appGroup = "group.com.elior.dud"
+    /// The App Group really granted to this install. A re-signing tool (e.g. Sideloadly) can rename the group;
+    /// then the hard-coded name silently gives each process its own private storage and the widget sees nothing.
+    /// Read the actual group from the embedded provisioning profile; fall back to the name in the project.
+    static let appGroup: String = {
+        let fallback = "group.com.elior.dud"
+        var urls: [URL] = []
+        if let u = Bundle.main.url(forResource: "embedded", withExtension: "mobileprovision") { urls.append(u) }
+        // the widget extension: also try the host app's profile (…/HomeOn.app/PlugIns/X.appex → …/HomeOn.app)
+        let appURL = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()
+        urls.append(appURL.appendingPathComponent("embedded.mobileprovision"))
+        for u in urls {
+            guard let data = try? Data(contentsOf: u),
+                  let start = data.range(of: Data("<?xml".utf8)),
+                  let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex) else { continue }
+            let xml = data.subdata(in: start.lowerBound..<end.upperBound)
+            guard let plist = try? PropertyListSerialization.propertyList(from: xml, format: nil) as? [String: Any],
+                  let ent = plist["Entitlements"] as? [String: Any],
+                  let groups = ent["com.apple.security.application-groups"] as? [String] else { continue }
+            if groups.contains(fallback) { return fallback }
+            if let g = groups.first(where: { $0.hasPrefix("group.") && !$0.contains("*") }) { return g }
+        }
+        return fallback
+    }()
     let defaults: UserDefaults
 
     init() { defaults = UserDefaults(suiteName: Store.appGroup) ?? .standard }
