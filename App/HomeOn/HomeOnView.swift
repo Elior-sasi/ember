@@ -301,6 +301,22 @@ struct HomeOnWebView: UIViewRepresentable {
                 model.applyExternal(s)
                 return HeaterBridge.json(["ok": true, "on": s.state.isOn, "left": s.state.secondsLeft, "watts": s.state.powerWatts,
                                           "auto": s.state.autoShutdownSeconds, "unlimited": Store.shared.unlimitedRun, "notify": model.notify])
+            case "tuyaSet":   // device keys from HomeOn's server, for control on the home WiFi
+                let n = await TuyaLocal.shared.set(body["devices"] as? [[String: Any]] ?? [])
+                return HeaterBridge.json(["ok": true, "count": n])
+            case "tuyaCmd":
+                guard let id = body["id"] as? String, let dps = body["dps"] as? [String: Any] else { throw TuyaError.unknown }
+                try await TuyaLocal.shared.control(id, dps: dps)
+                return #"{"ok":true}"#
+            case "tuyaQuery":
+                guard let id = body["id"] as? String else { throw TuyaError.unknown }
+                let dps = try await TuyaLocal.shared.query(id)
+                return HeaterBridge.json(["ok": true, "dps": dps])
+            case "tuyaDiag":
+                if body["scan"] as? Bool == true { await TuyaLocal.shared.kickScan(force: true) }
+                let list = await TuyaLocal.shared.diag()
+                let scanning = await TuyaLocal.shared.isScanning
+                return HeaterBridge.json(["ok": true, "devices": list, "scanning": scanning, "wifi": Net.wifiSubnet()?.key ?? ""])
             case "tv":   // Google TV remote on the home WiFi
                 let tv = TVRemote.shared
                 switch body["cmd"] as? String ?? "" {
