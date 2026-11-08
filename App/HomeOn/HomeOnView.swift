@@ -119,9 +119,9 @@ struct SplashView: View {
                                 .frame(width: 80 * k, height: 62 * k).offset(x: 266 * k, y: 342 * k)
                                 .opacity(tile2 ? 1 : 0).shadow(color: orange.opacity(0.8), radius: tile2 ? 6 : 0)
                             Wave(r: 58 * k, cx: 368 * k, cy: 162 * k).stroke(LinearGradient(colors: [gold, orange], startPoint: .top, endPoint: .bottom), style: StrokeStyle(lineWidth: 26 * k, lineCap: .round))
-                                .opacity(wave1 ? (pulse ? 0.55 : 1) : 0)
+                                .opacity(wave1 ? 1 : 0)
                             Wave(r: 112 * k, cx: 368 * k, cy: 162 * k).stroke(LinearGradient(colors: [gold, orange], startPoint: .top, endPoint: .bottom), style: StrokeStyle(lineWidth: 26 * k, lineCap: .round))
-                                .opacity(wave2 ? (pulse ? 1 : 0.55) : 0)
+                                .opacity(wave2 ? 1 : 0)
                         }
                     }
                     .frame(width: 120, height: 120)
