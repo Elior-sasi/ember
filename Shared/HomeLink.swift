@@ -162,6 +162,7 @@ struct SceneEntity: AppEntity {
     var name: String
     var displayRepresentation: DisplayRepresentation { DisplayRepresentation(title: "\(name)") }
     init(_ s: HomeScene) { id = s.id; name = s.name }
+    init(id: String, name: String) { self.id = id; self.name = name }
 }
 
 struct SceneQuery: EntityStringQuery {
@@ -203,6 +204,7 @@ struct RunSceneIntent: AppIntent {
     static var description = IntentDescription("מפעיל סצנה של HomeOn.")
     @Parameter(title: "סצנה") var scene: SceneEntity
     init() {}
+    init(scene: SceneEntity) { self.scene = scene }
     static var parameterSummary: some ParameterSummary { Summary("הפעל את \(\.$scene)") }
     func perform() async throws -> some IntentResult & ProvidesDialog {
         guard let s = HomeLink.scenes.first(where: { $0.id == scene.id }) else { throw HomeLink.Failure.server("הסצנה לא נמצאה") }

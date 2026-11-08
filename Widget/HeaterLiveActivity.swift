@@ -113,6 +113,8 @@ struct DudWidgets: WidgetBundle {
         WashLiveActivity()
         if #available(iOS 18.0, *) {
             TVPowerControl()
+            DevicePowerControl()
+            SceneControl()
         }
     }
 }
