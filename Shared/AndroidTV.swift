@@ -448,9 +448,17 @@ final class TVRemote {
         }
     }
 
+    /// Prefers the TV's IPv4 address: a bare fe80:: (link-local IPv6) address can't be dialled later ("Network is down").
     private static func resolve(_ ep: NWEndpoint) async -> String? {
+        if let v4 = await resolveOnce(ep, v4: true) { return v4 }
+        return await resolveOnce(ep, v4: false)
+    }
+
+    private static func resolveOnce(_ ep: NWEndpoint, v4: Bool) async -> String? {
         await withCheckedContinuation { (c: CheckedContinuation<String?, Never>) in
-            let conn = NWConnection(to: ep, using: .tcp)
+            let params = NWParameters.tcp
+            if v4, let ipo = params.defaultProtocolStack.internetProtocol as? NWProtocolIP.Options { ipo.version = .v4 }
+            let conn = NWConnection(to: ep, using: params)
             var done = false
             conn.stateUpdateHandler = { st in
                 if case .ready = st, !done {
@@ -464,7 +472,7 @@ final class TVRemote {
                         @unknown default: break
                         }
                     }
-                    conn.cancel(); c.resume(returning: ip?.components(separatedBy: "%").first)
+                    conn.cancel(); c.resume(returning: (ip?.hasPrefix("fe80") ?? false) && v4 ? nil : ip)
                 } else if case .failed = st, !done { done = true; conn.cancel(); c.resume(returning: nil) }
             }
             conn.start(queue: .main)
