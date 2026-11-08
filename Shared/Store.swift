@@ -54,14 +54,17 @@ final class Store {
         let appURL = Bundle.main.bundleURL.deletingLastPathComponent().deletingLastPathComponent()
         urls.append(appURL.appendingPathComponent("embedded.mobileprovision"))
         for u in urls {
-            guard let data = try? Data(contentsOf: u),
+            guard let data = try? Data(contentsOf: u) else { groupInfo += "[\(u.path.suffix(40)): unreadable] "; continue }
+            guard
                   let start = data.range(of: Data("<?xml".utf8)),
                   let end = data.range(of: Data("</plist>".utf8), in: start.lowerBound..<data.endIndex) else { continue }
             let xml = data.subdata(in: start.lowerBound..<end.upperBound)
             guard let plist = try? PropertyListSerialization.propertyList(from: xml, format: nil) as? [String: Any],
-                  let ent = plist["Entitlements"] as? [String: Any],
-                  let groups = ent["com.apple.security.application-groups"] as? [String] else { continue }
-            groupInfo = groups.joined(separator: ",")
+                  let ent = plist["Entitlements"] as? [String: Any] else { groupInfo += "[\(u.lastPathComponent): no plist] "; continue }
+            let kc = (ent["keychain-access-groups"] as? [String] ?? []).joined(separator: ",")
+            groupInfo += "[id=\(ent["application-identifier"] as? String ?? "?") kc=\(kc)] "
+            guard let groups = ent["com.apple.security.application-groups"] as? [String] else { groupInfo += "no-groups "; continue }
+            groupInfo += "groups=" + groups.joined(separator: ",")
             if groups.contains(fallback) { return fallback }
             if let g = groups.first(where: { $0.hasPrefix("group.") && !$0.contains("*") }) { return g }
         }

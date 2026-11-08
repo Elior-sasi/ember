@@ -40,8 +40,8 @@ struct DevicesWidgetView: View {
                     Text(entry.linked ? "בחר מכשירים בהגדרות HomeOn" : "פתח את HomeOn פעם אחת")
                         .font(.footnote.weight(.semibold)).multilineTextAlignment(.center)
                     if !entry.linked {
-                        Text("\(Store.appGroup) · \(Store.groupWorks ? "משותף" : "לא משותף")")
-                            .font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
+                        Text("\(Store.appGroup) · \(Store.groupWorks ? "משותף" : "לא משותף")\n\(Store.groupInfo)")
+                            .font(.system(size: 8)).foregroundStyle(.secondary).lineLimit(6).multilineTextAlignment(.center)
                     }
                 }
             } else {
