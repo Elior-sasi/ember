@@ -1,5 +1,6 @@
 import SwiftUI
 import WebKit
+import SwitcherKit
 import UIKit
 
 /// HomeOn as an installed app: the HomeOn web app in a full-screen web view, plus the native parts
@@ -274,10 +275,32 @@ struct HomeOnWebView: UIViewRepresentable {
                 case "toggle":
                     let now = try await HeaterController.refresh()
                     s = now.state.isOn ? try await HeaterController.turnOff() : try await HeaterController.turnOn(minutes: model.chosen)
+                // everything the Ember screen could do, so HomeOn's heater page is the only heater screen
+                case "schedules":
+                    await model.loadSchedules()
+                    return HeaterBridge.json(["ok": true, "list": model.schedules.map(HeaterBridge.sched), "parked": model.parked.map(HeaterBridge.parked),
+                                              "next": (model.nextSchedule.map(HeaterBridge.sched) as Any?) ?? NSNull()])
+                case "schedSave":
+                    try await HeaterBridge.saveSchedule(body, model)
+                    return HeaterBridge.json(["ok": true, "list": model.schedules.map(HeaterBridge.sched), "parked": model.parked.map(HeaterBridge.parked)])
+                case "schedDelete":
+                    if let slot = body["slot"] as? Int { try await HeaterController.deleteSchedule(slot: slot) }
+                    if let id = body["parked"] as? String { Store.shared.parked.removeAll { $0.id.uuidString == id } }
+                    await model.loadSchedules()
+                    return HeaterBridge.json(["ok": true, "list": model.schedules.map(HeaterBridge.sched), "parked": model.parked.map(HeaterBridge.parked)])
+                case "autoOff":
+                    try await HeaterController.setAutoShutdown(minutes: max(60, min(1440, m)))
+                    s = try await HeaterController.refresh()
+                case "stats":
+                    return HeaterBridge.stats(tariff: model.config.tariff)
+                case "notify":
+                    if let on = body["on"] as? Bool { model.notify = on }
+                    return HeaterBridge.json(["ok": true, "notify": model.notify])
                 default: s = try await HeaterController.refresh()
                 }
                 model.applyExternal(s)
-                return #"{"ok":true,"on":\#(s.state.isOn),"left":\#(s.state.secondsLeft)}"#
+                return HeaterBridge.json(["ok": true, "on": s.state.isOn, "left": s.state.secondsLeft, "watts": s.state.powerWatts,
+                                          "auto": s.state.autoShutdownSeconds, "unlimited": Store.shared.unlimitedRun, "notify": model.notify])
             case "tv":   // Google TV remote on the home WiFi
                 let tv = TVRemote.shared
                 switch body["cmd"] as? String ?? "" {
@@ -395,5 +418,52 @@ struct HomeOnWebView: UIViewRepresentable {
         func webView(_ webView: WKWebView, requestMediaCapturePermissionFor origin: WKSecurityOrigin, initiatedByFrame frame: WKFrameInfo, type: WKMediaCaptureType, decisionHandler: @escaping (WKPermissionDecision) -> Void) {
             decisionHandler(origin.host == "elior-sasi.github.io" ? .grant : .prompt)
         }
+    }
+}
+
+
+/// JSON helpers for the heater part of the bridge.
+enum HeaterBridge {
+    static func json(_ o: [String: Any]) -> String {
+        (try? JSONSerialization.data(withJSONObject: o)).flatMap { String(data: $0, encoding: .utf8) } ?? #"{"ok":false}"#
+    }
+    static func sched(_ s: HeaterSchedule) -> [String: Any] {
+        ["slot": s.slot, "days": Array(WeekdayBits.indices(s.weekdays)).sorted(), "once": s.weekdays == 0, "start": s.startMinutes, "end": s.endMinutes]
+    }
+    static func parked(_ p: ParkedSchedule) -> [String: Any] {
+        ["id": p.id.uuidString, "days": Array(WeekdayBits.indices(p.weekdays)).sorted(), "once": p.weekdays == 0, "start": p.startMinutes, "end": p.endMinutes]
+    }
+    /// body: {slot?|parked?, days:[0..6], start, end, active}
+    @MainActor static func saveSchedule(_ body: [String: Any], _ model: AppModel) async throws {
+        let days = Set((body["days"] as? [Int] ?? []).filter { (0...6).contains($0) })
+        let mask = WeekdayBits.mask(days)
+        let start = body["start"] as? Int ?? 0, end = body["end"] as? Int ?? 0
+        let active = body["active"] as? Bool ?? true
+        if let slot = body["slot"] as? Int { try await HeaterController.deleteSchedule(slot: slot) }
+        if let id = body["parked"] as? String { Store.shared.parked.removeAll { $0.id.uuidString == id } }
+        if active { try await HeaterController.addSchedule(weekdays: mask, start: start, end: end) }
+        else { Store.shared.parked.append(ParkedSchedule(weekdays: mask, startMinutes: start, endMinutes: end)) }
+        await model.loadSchedules()
+    }
+    /// The last 30 days: heating minutes and kWh per day, from the runs the app saw.
+    static func stats(tariff: Double) -> String {
+        let cal = Calendar.current
+        let today = cal.startOfDay(for: Date())
+        var all = Store.shared.sessions
+        if let open = Store.shared.openSession { all.append(open) }
+        let days: [[String: Any]] = (0..<30).reversed().map { back in
+            let day = cal.date(byAdding: .day, value: -back, to: today)!
+            let next = cal.date(byAdding: .day, value: 1, to: day)!
+            var minutes = 0.0, kWh = 0.0
+            for s in all {
+                let a = max(s.start, day), b = min(s.end, next)
+                guard b > a else { continue }
+                let part = b.timeIntervalSince(a)
+                minutes += part / 60
+                kWh += Double(s.watts) * part / 3_600_000
+            }
+            return ["t": day.timeIntervalSince1970 * 1000, "min": minutes, "kwh": kWh]
+        }
+        return json(["ok": true, "days": days, "tariff": tariff])
     }
 }
