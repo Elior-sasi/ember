@@ -1,4 +1,7 @@
 import AppIntents
+#if canImport(ActivityKit)
+import ActivityKit
+#endif
 import Foundation
 
 enum HeaterDuration: Int, AppEnum {
@@ -93,5 +96,19 @@ struct HeaterStatusIntent: AppIntent {
             return .result(dialog: "הדוד כבוי. הוא כבה \(Fmt.ago(last)).")
         }
         return .result(dialog: "הדוד כבוי.")
+    }
+}
+
+
+/// Closes the heater's Live Activity after its timer ran out.
+struct CloseHeaterActivityIntent: LiveActivityIntent {
+    static var title: LocalizedStringResource = "סגירת הטיימר של הדוד"
+    static var isDiscoverable = false
+    init() {}
+    func perform() async throws -> some IntentResult {
+        #if canImport(ActivityKit) && os(iOS) && !WIDGET_EXTENSION
+        for a in Activity<HeaterActivityAttributes>.activities { await a.end(nil, dismissalPolicy: .immediate) }
+        #endif
+        return .result()
     }
 }

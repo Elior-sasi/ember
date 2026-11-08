@@ -175,6 +175,16 @@ enum Notifier {
 // MARK: - Live Activity
 
 enum LiveActivityManager {
+    /// The phone can't end a Live Activity by itself when the timer runs out while HomeOn is closed,
+    /// so finished ones are cleared as soon as HomeOn opens (and the activity shows "כבה" + a close button meanwhile).
+    static func clearFinished() {
+        #if canImport(ActivityKit) && os(iOS) && !WIDGET_EXTENSION
+        for a in Activity<HeaterActivityAttributes>.activities where !a.content.state.unlimited && a.content.state.endsAt <= Date() {
+            Task { await a.end(nil, dismissalPolicy: .immediate) }
+        }
+        #endif
+    }
+
     static func sync(_ snap: Snapshot, unlimited: Bool, name: String) {
         // Live Activities can only be started by the app itself. Intents that run from the
         // widget are LiveActivityIntents, so they execute in the app process anyway.
@@ -183,7 +193,7 @@ enum LiveActivityManager {
         let current = Activity<HeaterActivityAttributes>.activities
         if let end = snap.endsAt, let start = snap.startedAt {
             let state = HeaterActivityAttributes.ContentState(startedAt: start, endsAt: end, unlimited: unlimited, watts: snap.state.powerWatts)
-            let content = ActivityContent(state: state, staleDate: end.addingTimeInterval(60))
+            let content = ActivityContent(state: state, staleDate: unlimited ? end.addingTimeInterval(60) : end)
             if let a = current.first {
                 Task { await a.update(content) }
             } else {

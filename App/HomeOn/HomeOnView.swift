@@ -59,6 +59,7 @@ struct HomeOnRoot: View {
     }
 
     private func shown() {
+        LiveActivityManager.clearFinished()
         guard shownAt == nil else { return }
         shownAt = Date()
         if model.webReady { hideWhenSeen() }
