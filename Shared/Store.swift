@@ -44,6 +44,8 @@ final class Store {
     /// The App Group really granted to this install. A re-signing tool (e.g. Sideloadly) can rename the group;
     /// then the hard-coded name silently gives each process its own private storage and the widget sees nothing.
     /// Read the actual group from the embedded provisioning profile; fall back to the name in the project.
+    /// What the profile said, for the diagnostics line (groups found, or why none).
+    static var groupInfo = ""
     static let appGroup: String = {
         let fallback = "group.com.elior.dud"
         var urls: [URL] = []
@@ -59,11 +61,15 @@ final class Store {
             guard let plist = try? PropertyListSerialization.propertyList(from: xml, format: nil) as? [String: Any],
                   let ent = plist["Entitlements"] as? [String: Any],
                   let groups = ent["com.apple.security.application-groups"] as? [String] else { continue }
+            groupInfo = groups.joined(separator: ",")
             if groups.contains(fallback) { return fallback }
             if let g = groups.first(where: { $0.hasPrefix("group.") && !$0.contains("*") }) { return g }
         }
+        if groupInfo.isEmpty { groupInfo = "אין קבוצה בפרופיל" }
         return fallback
     }()
+    /// true when the shared storage really is shared (the container exists for this group)
+    static var groupWorks: Bool { FileManager.default.containerURL(forSecurityApplicationGroupIdentifier: appGroup) != nil }
     let defaults: UserDefaults
 
     init() { defaults = UserDefaults(suiteName: Store.appGroup) ?? .standard }

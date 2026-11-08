@@ -183,6 +183,10 @@ enum HomeNative {
 
     static func handle(_ action: String, _ body: [String: Any]) async throws -> String? {
         switch action {
+        case "diag":
+            _ = Store.shared
+            return json(["group": Store.appGroup, "profile": Store.groupInfo, "shared": Store.groupWorks,
+                         "key": !HomeLink.key.isEmpty, "devices": HomeLink.devices.count, "bundle": Bundle.main.bundleIdentifier ?? ""])
         case "config":   // server, key, devices, scenes, widget choice → Siri and the widget
             if let a = body["api"] as? String, !a.isEmpty { HomeLink.api = a }
             if let k = body["key"] as? String { HomeLink.key = k }

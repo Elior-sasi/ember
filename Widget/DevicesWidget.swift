@@ -39,6 +39,10 @@ struct DevicesWidgetView: View {
                     Image(systemName: "house.fill").font(.title2).foregroundStyle(Theme.accent)
                     Text(entry.linked ? "בחר מכשירים בהגדרות HomeOn" : "פתח את HomeOn פעם אחת")
                         .font(.footnote.weight(.semibold)).multilineTextAlignment(.center)
+                    if !entry.linked {
+                        Text("\(Store.appGroup) · \(Store.groupWorks ? "משותף" : "לא משותף")")
+                            .font(.system(size: 9)).foregroundStyle(.secondary).lineLimit(2).multilineTextAlignment(.center)
+                    }
                 }
             } else {
                 let cols = family == .systemSmall ? 2 : 3
