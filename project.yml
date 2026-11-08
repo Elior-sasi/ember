@@ -41,6 +41,8 @@ targets:
       properties:
         com.apple.security.application-groups:
           - group.com.elior.dud
+        keychain-access-groups:
+          - 59W3UZZ85Y.com.elior.homeon.shared
     info:
       path: Resources/Info.plist
       properties:
@@ -87,6 +89,8 @@ targets:
       properties:
         com.apple.security.application-groups:
           - group.com.elior.dud
+        keychain-access-groups:
+          - 59W3UZZ85Y.com.elior.homeon.shared
     info:
       path: Resources/Widget-Info.plist
       properties:

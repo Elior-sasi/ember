@@ -22,7 +22,7 @@ struct HomeScene: Codable, Hashable, Identifiable {
 }
 
 enum HomeLink {
-    static let defaults = UserDefaults(suiteName: Store.appGroup) ?? .standard
+    static var defaults: SharedPrefs { SharedPrefs.shared }
 
     static var api: String {
         get { defaults.string(forKey: "ho.api") ?? "https://europe-west1-tab-fd9b6.cloudfunctions.net/kor" }

@@ -18,6 +18,7 @@ struct DevicesProvider: TimelineProvider {
         completion(DevicesEntry(date: .now, devices: HomeLink.widgetDevices, linked: !HomeLink.key.isEmpty))
     }
     func getTimeline(in context: Context, completion: @escaping (Timeline<DevicesEntry>) -> Void) {
+        SharedPrefs.shared.reload()
         Task {
             let ids = HomeLink.widgetDevices.map(\.id)
             await HomeLink.refresh(ids)
@@ -40,7 +41,7 @@ struct DevicesWidgetView: View {
                     Text(entry.linked ? "בחר מכשירים בהגדרות HomeOn" : "פתח את HomeOn פעם אחת")
                         .font(.footnote.weight(.semibold)).multilineTextAlignment(.center)
                     if !entry.linked {
-                        Text("\(Store.appGroup) · \(Store.groupWorks ? "משותף" : "לא משותף")\n\(Store.groupInfo)")
+                        Text("\(Store.groupWorks ? "group" : "keychain \(SharedPrefs.accessGroup) \(SharedPrefs.status)")\n\(Store.groupInfo)")
                             .font(.system(size: 8)).foregroundStyle(.secondary).lineLimit(6).multilineTextAlignment(.center)
                     }
                 }

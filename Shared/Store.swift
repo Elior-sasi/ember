@@ -46,6 +46,8 @@ final class Store {
     /// Read the actual group from the embedded provisioning profile; fall back to the name in the project.
     /// What the profile said, for the diagnostics line (groups found, or why none).
     static var groupInfo = ""
+    /// Team prefix of this install ("59W3UZZ85Y"), from the profile's application-identifier
+    static var teamID = ""
     static let appGroup: String = {
         let fallback = "group.com.elior.dud"
         var urls: [URL] = []
@@ -62,7 +64,9 @@ final class Store {
             guard let plist = try? PropertyListSerialization.propertyList(from: xml, format: nil) as? [String: Any],
                   let ent = plist["Entitlements"] as? [String: Any] else { groupInfo += "[\(u.lastPathComponent): no plist] "; continue }
             let kc = (ent["keychain-access-groups"] as? [String] ?? []).joined(separator: ",")
-            groupInfo += "[id=\(ent["application-identifier"] as? String ?? "?") kc=\(kc)] "
+            let appID = ent["application-identifier"] as? String ?? ""
+            if teamID.isEmpty, let dot = appID.firstIndex(of: ".") { teamID = String(appID[..<dot]) }
+            groupInfo += "[id=\(appID) kc=\(kc)] "
             guard let groups = ent["com.apple.security.application-groups"] as? [String] else { groupInfo += "no-groups "; continue }
             groupInfo += "groups=" + groups.joined(separator: ",")
             if groups.contains(fallback) { return fallback }
