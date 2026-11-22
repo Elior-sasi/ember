@@ -43,6 +43,8 @@ targets:
           - group.com.elior.dud
         keychain-access-groups:
           - 59W3UZZ85Y.com.elior.dud.shared
+        com.apple.developer.healthkit: true
+        com.apple.developer.healthkit.access: []
     info:
       path: Resources/Info.plist
       properties:
@@ -63,6 +65,8 @@ targets:
         CFBundleURLTypes:
           - CFBundleURLName: com.elior.dud
             CFBundleURLSchemes: [ember, homeon]
+        NSHealthShareUsageDescription: כדי להציג במסך המשקל את השקילות מהמשקל החכם (משקל, אחוז שומן, BMI) מתוך אפליקציית הבריאות.
+        NSHealthUpdateUsageDescription: HomeOn לא כותבת לאפליקציית הבריאות.
         NSCameraUsageDescription: לסריקת קוד QR בחיבור ל-Smart Life.
         NSMicrophoneUsageDescription: לפקודות קוליות בעברית.
         NSSpeechRecognitionUsageDescription: לפקודות קוליות בעברית.

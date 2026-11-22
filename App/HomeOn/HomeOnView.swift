@@ -368,6 +368,8 @@ struct HomeOnWebView: UIViewRepresentable {
                 }
             case "config", "geo", "activity", "notify", "diag":
                 return try await HomeNative.handle(action, body) ?? "{}"
+            case "health":   // the scale's readings from Apple Health
+                return try await HealthScale.handle(body)
             case "haptic":
                 UIImpactFeedbackGenerator(style: .light).impactOccurred()
                 return #"{"ok":true}"#
